@@ -178,7 +178,7 @@ services:
             --bind component:tcp://eth0:4004 \
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
-            --peering dynamic \
+            --peering static \
             --scheduler parallel \
             --fork-cache-keep-time 0 \
     \""
@@ -202,8 +202,8 @@ services:
             --bind component:tcp://eth0:4004 \
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
-            --peering dynamic \
-            --seeds tcp://validator-0:8800 \
+            --peering static \
+            --peers tcp://validator-0:8800
             --scheduler parallel \
             --fork-cache-keep-time 0 \
     \""
@@ -227,8 +227,8 @@ services:
             --bind component:tcp://eth0:4004 \
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
-            --peering dynamic \
-            --seeds tcp://validator-0:8800 \
+            --peering static \
+            --peers tcp://validator-0:8800,tcp://validator-1:8800
             --scheduler parallel \
             --fork-cache-keep-time 0 \
     \""
@@ -252,8 +252,8 @@ services:
             --bind component:tcp://eth0:4004 \
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
-            --peering dynamic \
-            --seeds tcp://validator-0:8800 \
+            --peering static \
+            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800
             --scheduler parallel \
             --fork-cache-keep-time 0 \
     \""
@@ -277,8 +277,8 @@ services:
             --bind component:tcp://eth0:4004 \
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
-            --peering dynamic \
-            --seeds tcp://validator-0:8800 \
+            --peering static \
+            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800
             --scheduler parallel \
             --fork-cache-keep-time 30 \
     \""
