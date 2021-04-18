@@ -3,7 +3,11 @@ use std::str::FromStr;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time;
 
+use crate::timing;
+use crate::storage::get_storage;
 use crate::config::PhaseQueenConfig;
+use crate::state::PhaseQueenState;
+use crate::node::PhaseQueenNode;
 
 use sawtooth_sdk::consensus::{engine::*, service::Service};
 
@@ -39,9 +43,36 @@ impl Engine for DevmodeEngine {
 
         info!("PhaseQueen config loaded: {:?}", self.config);
 
+        let mut pbft_state = get_storage(&self.config.storage_location, || {
+            PhaseQueenState::new(
+                local_peer_info.peer_id.clone(),
+                chain_head.block_num,
+                &self.config,
+            )
+        })
+        .unwrap_or_else(|err| panic!("Failed to load state due to error: {}", err));
+
+        info!("PhaseQueenState state created: {}", **pbft_state.read());
+
+        let mut block_publishing_ticker = timing::Ticker::new(self.config.block_publishing_delay);
+
+        let mut node = PhaseQueenNode::new(
+            &self.config,
+            chain_head,
+            peers,
+            service,
+            &mut pbft_state.write(),
+        );
+
+        node.start_idle_timeout(&mut pbft_state.write());
+
+        // TODO: debug, rimuovere poi
+        let mut timestamp_log = time::Instant::now();
+
         loop {
             let incoming_message = updates.recv_timeout(time::Duration::from_millis(10));
-
+            let state = &mut **pbft_state.write();
+            
             match incoming_message {
                 Ok(update) => {
                     debug!("Received message: {}", message_type(&update));
@@ -58,6 +89,11 @@ impl Engine for DevmodeEngine {
                     break;
                 }
                 Err(RecvTimeoutError::Timeout) => {}
+            }
+
+            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(5) {
+                info!("My state: {:?}", state);
+                timestamp_log = time::Instant::now();
             }
         }
 

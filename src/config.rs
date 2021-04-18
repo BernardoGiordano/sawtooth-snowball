@@ -29,6 +29,9 @@ pub struct PhaseQueenConfig {
     /// The maximum time for retrying with exponential backoff
     pub exponential_retry_max: Duration,
 
+    /// Must be longer than block_publishing_delay
+    pub idle_timeout: Duration,
+
     /// Where to store PbftState ("memory" or "disk+/path/to/file")
     pub storage_location: String,
 }
@@ -41,6 +44,7 @@ impl PhaseQueenConfig {
             update_recv_timeout: Duration::from_millis(10),
             exponential_retry_base: Duration::from_millis(100),
             exponential_retry_max: Duration::from_millis(60000),
+            idle_timeout: Duration::from_millis(30000),
             storage_location: "memory".into(),
         }
     }
@@ -64,6 +68,7 @@ impl PhaseQueenConfig {
                     vec![
                         String::from("sawtooth.consensus.algorithm.members"),
                         String::from("sawtooth.consensus.algorithm.block_publishing_delay"),
+                        String::from("sawtooth.consensus.algorithm.idle_timeout"),
                     ],
                 )
             },
@@ -78,6 +83,12 @@ impl PhaseQueenConfig {
             &settings,
             &mut self.block_publishing_delay,
             "sawtooth.consensus.algorithm.block_publishing_delay",
+        );
+
+        merge_millis_setting_if_set(
+            &settings,
+            &mut self.idle_timeout,
+            "sawtooth.consensus.algorithm.idle_timeout",
         );
     }
 }
