@@ -8,24 +8,24 @@ use crate::config::PhaseQueenConfig;
 
 /// Phases of the PBFT algorithm, in `Normal` mode
 #[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
-pub enum PbftPhase {
-    PrePreparing,
-    Preparing,
-    Committing,
+pub enum PhaseQueenPhase {
+    Idle,
+    Exchange,
+    QueenExchange,
     // Node is waiting for a BlockCommit (bool indicates if it's a catch-up commit)
     Finishing(bool),
 }
 
-impl fmt::Display for PbftPhase {
+impl fmt::Display for PhaseQueenPhase {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                PbftPhase::PrePreparing => "PrePreparing".into(),
-                PbftPhase::Preparing => "Preparing".into(),
-                PbftPhase::Committing => "Committing".into(),
-                PbftPhase::Finishing(cu) => format!("Finishing {}", cu),
+                PhaseQueenPhase::Idle => "Idle".into(),
+                PhaseQueenPhase::Exchange => "Exchange".into(),
+                PhaseQueenPhase::QueenExchange => "QueenExchange".into(),
+                PhaseQueenPhase::Finishing(cu) => format!("Finishing {}", cu),
             },
         )
     }
@@ -33,18 +33,10 @@ impl fmt::Display for PbftPhase {
 
 impl fmt::Display for PhaseQueenState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let phase = {
-            match self.phase {
-                PbftPhase::PrePreparing => "PP".into(),
-                PbftPhase::Preparing => "Pr".into(),
-                PbftPhase::Committing => "Co".into(),
-                PbftPhase::Finishing(cu) => format!("Fi({})", cu),
-            }
-        };
         write!(
             f,
             "({}, seq {})",
-            phase, self.seq_num,
+            self.phase, self.seq_num,
         )
     }
 }
@@ -65,7 +57,7 @@ pub struct PhaseQueenState {
     pub chain_head: BlockId,
 
     /// Current phase of the algorithm
-    pub phase: PbftPhase,
+    pub phase: PhaseQueenPhase,
 
     /// List of members in the PBFT network, including this node
     pub member_ids: Vec<PeerId>,
@@ -106,7 +98,7 @@ impl PhaseQueenState {
             order: order,
             seq_num: head_block_num + 1,
             chain_head: BlockId::new(),
-            phase: PbftPhase::PrePreparing,
+            phase: PhaseQueenPhase::Idle,
             f,
             member_ids: config.members.clone(),
             idle_timeout: Timeout::new(config.idle_timeout),
