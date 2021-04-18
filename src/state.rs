@@ -50,6 +50,9 @@ pub struct PhaseQueenState {
     /// This node order number for queening
     pub order: u64,
 
+    /// This is needed to store the current k stage
+    pub k: u64,
+
     /// The node's current sequence number
     pub seq_num: u64,
 
@@ -96,6 +99,7 @@ impl PhaseQueenState {
         PhaseQueenState {
             id,
             order: order,
+            k: 0,
             seq_num: head_block_num + 1,
             chain_head: BlockId::new(),
             phase: PhaseQueenPhase::Idle,
