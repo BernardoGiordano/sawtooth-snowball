@@ -8,11 +8,20 @@ description = "Hyperledger Sawtooth DevMode Rust consensus engine"
 name = "devmode-engine-rust"
 path = "src/main.rs"
 
+[features]
+default = ["with-serde"]
+with-serde = []
+
 [dependencies]
 clap = "2"
 log = "0.3.0"
 log4rs = "0.7.0"
 rand = "0.4.2"
+hex = "0.3"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+serde_millis = "0.1"
 sawtooth-sdk = "0.4"
 
 [package.metadata.deb]

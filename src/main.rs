@@ -19,11 +19,15 @@
 extern crate clap;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate serde_derive;
 extern crate log4rs;
 extern crate rand;
 extern crate sawtooth_sdk;
 
-mod engine;
+pub mod config;
+pub mod engine;
+pub mod timing;
 
 use std::process;
 
@@ -76,9 +80,16 @@ fn main() {
         process::exit(1);
     });
 
+    info!("Sawtooth PhaseQueen Engine ({})", env!("CARGO_PKG_VERSION"));
+
+    let mut phasequeen_config = config::PhaseQueenConfig::default();
+
+    let phasequeen_engine = DevmodeEngine::new(phasequeen_config);
+
+
     let (driver, _stop) = ZmqDriver::new();
     driver
-        .start(endpoint, DevmodeEngine::new())
+        .start(endpoint, phasequeen_engine)
         .unwrap_or_else(|err| {
             error!("{}", err);
             process::exit(1);

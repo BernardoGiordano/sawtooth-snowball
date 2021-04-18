@@ -15,6 +15,12 @@
 
 version: "2.1"
 
+volumes:
+  keys:
+  cargo-registry:
+  cargo-git:
+  cargo-target:
+
 services:
 
   test-devmode-engine-liveness:
@@ -67,6 +73,8 @@ services:
     image: sawtooth-devmode$INSTALL_TYPE:$ISOLATION_ID
     volumes:
       - $SAWTOOTH_DEVMODE:/project/sawtooth-devmode
+      - cargo-registry:/root/.cargo/registry
+      - cargo-git:/root/.cargo/git
     command: devmode-engine-rust --connect tcp://validator-0:5005 -vv
     stop_signal: SIGKILL
 
@@ -81,6 +89,8 @@ services:
     image: sawtooth-devmode$INSTALL_TYPE:$ISOLATION_ID
     volumes:
       - $SAWTOOTH_DEVMODE:/project/sawtooth-devmode
+      - cargo-registry:/root/.cargo/registry
+      - cargo-git:/root/.cargo/git
     command: devmode-engine-rust --connect tcp://validator-1:5005 -vv
     stop_signal: SIGKILL
 
@@ -95,6 +105,8 @@ services:
     image: sawtooth-devmode$INSTALL_TYPE:$ISOLATION_ID
     volumes:
       - $SAWTOOTH_DEVMODE:/project/sawtooth-devmode
+      - cargo-registry:/root/.cargo/registry
+      - cargo-git:/root/.cargo/git
     command: devmode-engine-rust --connect tcp://validator-2:5005 -vv
     stop_signal: SIGKILL
 
@@ -109,6 +121,8 @@ services:
     image: sawtooth-devmode$INSTALL_TYPE:$ISOLATION_ID
     volumes:
       - $SAWTOOTH_DEVMODE:/project/sawtooth-devmode
+      - cargo-registry:/root/.cargo/registry
+      - cargo-git:/root/.cargo/git
     command: devmode-engine-rust --connect tcp://validator-3:5005 -vv
     stop_signal: SIGKILL
 
@@ -123,12 +137,16 @@ services:
     image: sawtooth-devmode$INSTALL_TYPE:$ISOLATION_ID
     volumes:
       - $SAWTOOTH_DEVMODE:/project/sawtooth-devmode
+      - cargo-registry:/root/.cargo/registry
+      - cargo-git:/root/.cargo/git
     command: |
       bash -c "sleep 15 && devmode-engine-rust --connect tcp://validator-4:5005 -v"
     stop_signal: SIGKILL
 
   validator-0:
     image: hyperledger/sawtooth-validator:droptarget-nightly
+    volumes:
+      - keys:/shared_keys
     expose:
       - 4004
       - 8800
@@ -137,6 +155,10 @@ services:
     environment:
       RUST_BACKTRACE: full
     command: "bash -c \"\
+        sawadm keygen validator-1 && \
+        sawadm keygen validator-2 && \
+        sawadm keygen validator-3 && \
+        sawadm keygen validator-4 && \
         sawadm keygen && \
         sawset genesis \
           -k /etc/sawtooth/keys/validator.priv \
@@ -145,11 +167,12 @@ services:
           -k /etc/sawtooth/keys/validator.priv \
           sawtooth.consensus.algorithm.name=Devmode \
           sawtooth.consensus.algorithm.version=0.1 \
-          sawtooth.consensus.min_wait_time=2 \
-          sawtooth.consensus.max_wait_time=4 \
+          sawtooth.consensus.algorithm.members=\\['\\\"'$$(cat /etc/sawtooth/keys/validator.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-1.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-2.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-3.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-4.pub)'\\\"'\\] \
           -o config.batch && \
         sawadm genesis \
           config-genesis.batch config.batch && \
+        mv /etc/sawtooth/keys/validator-* /shared_keys && \
+        echo $$(cat /etc/sawtooth/keys/validator.pub); \
         sawtooth-validator -v \
             --endpoint tcp://validator-0:8800 \
             --bind component:tcp://eth0:4004 \
@@ -163,6 +186,8 @@ services:
 
   validator-1:
     image: hyperledger/sawtooth-validator:droptarget-nightly
+    volumes:
+      - keys:/shared_keys
     expose:
       - 4004
       - 8800
@@ -170,7 +195,8 @@ services:
     environment:
       RUST_BACKTRACE: full
     command: "bash -c \"\
-        sawadm keygen && \
+        while true; do if [ -e /shared_keys/validator-1.pub ]; then mv /shared_keys/validator-1.priv /etc/sawtooth/keys/validator.priv && mv /shared_keys/validator-1.pub /etc/sawtooth/keys/validator.pub; break; fi; sleep 0.5; done; \
+        echo $$(cat /etc/sawtooth/keys/validator.pub); \
         sawtooth-validator -v \
             --endpoint tcp://validator-1:8800 \
             --bind component:tcp://eth0:4004 \
@@ -185,6 +211,8 @@ services:
 
   validator-2:
     image: hyperledger/sawtooth-validator:droptarget-nightly
+    volumes:
+      - keys:/shared_keys
     expose:
       - 4004
       - 8800
@@ -192,7 +220,8 @@ services:
     environment:
       RUST_BACKTRACE: full
     command: "bash -c \"\
-        sawadm keygen && \
+        while true; do if [ -e /shared_keys/validator-2.pub ]; then mv /shared_keys/validator-2.priv /etc/sawtooth/keys/validator.priv && mv /shared_keys/validator-2.pub /etc/sawtooth/keys/validator.pub; break; fi; sleep 0.5; done; \
+        echo $$(cat /etc/sawtooth/keys/validator.pub); \
         sawtooth-validator -v \
             --endpoint tcp://validator-2:8800 \
             --bind component:tcp://eth0:4004 \
@@ -207,6 +236,8 @@ services:
 
   validator-3:
     image: hyperledger/sawtooth-validator:droptarget-nightly
+    volumes:
+      - keys:/shared_keys
     expose:
       - 4004
       - 8800
@@ -214,7 +245,8 @@ services:
     environment:
       RUST_BACKTRACE: full
     command: "bash -c \"\
-        sawadm keygen && \
+        while true; do if [ -e /shared_keys/validator-3.pub ]; then mv /shared_keys/validator-3.priv /etc/sawtooth/keys/validator.priv && mv /shared_keys/validator-3.pub /etc/sawtooth/keys/validator.pub; break; fi; sleep 0.5; done; \
+        echo $$(cat /etc/sawtooth/keys/validator.pub); \
         sawtooth-validator -v \
             --endpoint tcp://validator-3:8800 \
             --bind component:tcp://eth0:4004 \
@@ -229,6 +261,8 @@ services:
 
   validator-4:
     image: hyperledger/sawtooth-validator:droptarget-nightly
+    volumes:
+      - keys:/shared_keys
     expose:
       - 4004
       - 8800
@@ -236,7 +270,8 @@ services:
     environment:
       RUST_BACKTRACE: full
     command: "bash -c \"\
-        sawadm keygen && \
+        while true; do if [ -e /shared_keys/validator-4.pub ]; then mv /shared_keys/validator-4.priv /etc/sawtooth/keys/validator.priv && mv /shared_keys/validator-4.pub /etc/sawtooth/keys/validator.pub; break; fi; sleep 0.5; done; \
+        echo $$(cat /etc/sawtooth/keys/validator.pub); \
         sawtooth-validator -v \
             --endpoint tcp://validator-4:8800 \
             --bind component:tcp://eth0:4004 \
