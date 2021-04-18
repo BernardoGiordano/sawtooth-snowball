@@ -139,8 +139,7 @@ services:
       - $SAWTOOTH_DEVMODE:/project/sawtooth-devmode
       - cargo-registry:/root/.cargo/registry
       - cargo-git:/root/.cargo/git
-    command: |
-      bash -c "sleep 15 && devmode-engine-rust --connect tcp://validator-4:5005 -v"
+    command: devmode-engine-rust --connect tcp://validator-4:5005 -vv
     stop_signal: SIGKILL
 
   validator-0:
@@ -280,7 +279,7 @@ services:
             --peering static \
             --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800
             --scheduler parallel \
-            --fork-cache-keep-time 30 \
+            --fork-cache-keep-time 0 \
     \""
     stop_signal: SIGKILL
 
