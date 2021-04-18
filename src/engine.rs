@@ -11,17 +11,17 @@ use crate::node::PhaseQueenNode;
 
 use sawtooth_sdk::consensus::{engine::*, service::Service};
 
-pub struct DevmodeEngine {
+pub struct PhaseQueenEngine {
     config: PhaseQueenConfig,
 }
 
-impl DevmodeEngine {
+impl PhaseQueenEngine {
     pub fn new(config: PhaseQueenConfig) -> Self {
-        DevmodeEngine { config }
+        PhaseQueenEngine { config }
     }
 }
 
-impl Engine for DevmodeEngine {
+impl Engine for PhaseQueenEngine {
     #[allow(clippy::cognitive_complexity)]
     fn start(
         &mut self,
@@ -72,23 +72,14 @@ impl Engine for DevmodeEngine {
         loop {
             let incoming_message = updates.recv_timeout(time::Duration::from_millis(10));
             let state = &mut **pbft_state.write();
-            
-            match incoming_message {
-                Ok(update) => {
-                    debug!("Received message: {}", message_type(&update));
 
-                    match update {
-                        Update::Shutdown => {
-                            break;
-                        }
-                        _ => { }
+            match handle_update(&mut node, incoming_message, state) {
+                Ok(again) => {
+                    if !again {
+                        break;
                     }
                 }
-                Err(RecvTimeoutError::Disconnected) => {
-                    error!("Disconnected from validator");
-                    break;
-                }
-                Err(RecvTimeoutError::Timeout) => {}
+                Err(err) => error!("{}", err),
             }
 
             if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(5) {
@@ -133,19 +124,6 @@ fn to_hex(bytes: &[u8]) -> String {
     buf
 }
 
-fn message_type(update: &Update) -> &str {
-    match *update {
-        Update::PeerConnected(_) => "PeerConnected",
-        Update::PeerDisconnected(_) => "PeerDisconnected",
-        Update::PeerMessage(..) => "PeerMessage",
-        Update::BlockNew(_) => "BlockNew",
-        Update::BlockValid(_) => "BlockValid",
-        Update::BlockInvalid(_) => "BlockInvalid",
-        Update::BlockCommit(_) => "BlockCommit",
-        Update::Shutdown => "Shutdown",
-    }
-}
-
 pub enum DevmodeMessage {
     Ack,
     Published,
@@ -163,4 +141,40 @@ impl FromStr for DevmodeMessage {
             _ => Err("Invalid message type"),
         }
     }
+}
+
+fn handle_update(
+    node: &mut PhaseQueenNode,
+    incoming_message: Result<Update, RecvTimeoutError>,
+    state: &mut PhaseQueenState,
+) -> Result<bool, Error> {
+    match incoming_message {
+        Ok(Update::BlockNew(block)) => node.on_block_new(block, state),
+        Ok(Update::BlockValid(block_id)) => node.on_block_valid(block_id, state),
+        Ok(Update::BlockInvalid(block_id)) => node.on_block_invalid(block_id),
+        Ok(Update::BlockCommit(block_id)) => node.on_block_commit(block_id, state),
+        Ok(Update::PeerMessage(message, _)) => {
+            // node.on_peer_message(parsed_message, stazte)?
+            return Ok(true);
+        }
+        Ok(Update::Shutdown) => {
+            info!("Received shutdown; stopping PBFT");
+            return Ok(false);
+        }
+        Ok(Update::PeerConnected(info)) => {
+            node.on_peer_connected(info.peer_id, state);
+            return Ok(true);
+        }
+        Ok(Update::PeerDisconnected(id)) => {
+            info!("Received PeerDisconnected for peer ID: {:?}", id);
+            return Ok(false);
+        }
+        Err(RecvTimeoutError::Timeout) => { return Ok(true); },
+        Err(RecvTimeoutError::Disconnected) => {
+            error!("Disconnected from validator; stopping PhaseQueen");
+            return Ok(false);
+        }
+    };
+
+    Ok(true)
 }

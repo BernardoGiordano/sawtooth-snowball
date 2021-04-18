@@ -39,7 +39,7 @@ use log4rs::append::console::ConsoleAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 
-use engine::DevmodeEngine;
+use engine::PhaseQueenEngine;
 use sawtooth_sdk::consensus::zmq_driver::ZmqDriver;
 
 fn main() {
@@ -87,7 +87,7 @@ fn main() {
 
     let mut phasequeen_config = config::PhaseQueenConfig::default();
 
-    let phasequeen_engine = DevmodeEngine::new(phasequeen_config);
+    let phasequeen_engine = PhaseQueenEngine::new(phasequeen_config);
 
 
     let (driver, _stop) = ZmqDriver::new();

@@ -1,4 +1,4 @@
-use sawtooth_sdk::consensus::engine::{Block, PeerInfo};
+use sawtooth_sdk::consensus::engine::{Block, BlockId, PeerId, PeerInfo};
 use sawtooth_sdk::consensus::service::Service;
 
 use crate::config::{PhaseQueenConfig};
@@ -41,6 +41,38 @@ impl PhaseQueenNode {
     /// Start the idle timeout
     pub fn start_idle_timeout(&self, state: &mut PhaseQueenState) {
         state.idle_timeout.start();
+    }
+
+    // ---------- Methods for handling Updates from the Validator ----------
+
+    pub fn on_block_new(&mut self, block: Block, state: &mut PhaseQueenState) -> bool {
+        info!("Got BlockNew: {}", hex::encode(&block.block_id));
+
+        true
+    }
+
+    pub fn on_block_valid(&mut self, block_id: BlockId, state: &mut PhaseQueenState) -> bool {
+        info!("Got BlockValid: {}", hex::encode(&block_id));
+
+        true
+    }
+
+    pub fn on_block_invalid(&mut self, block_id: BlockId) -> bool {
+        info!("Got BlockInvalid: {}", hex::encode(&block_id));
+
+        true
+    }
+
+    pub fn on_block_commit(&mut self, block_id: BlockId, state: &mut PhaseQueenState) -> bool {
+        info!("Got BlockCommit: {}", hex::encode(&block_id));
+
+        true
+    }
+
+    pub fn on_peer_connected(&mut self, peer_id: PeerId, state: &mut PhaseQueenState) -> bool {
+        info!("Got PeerConnected: {:?}", hex::encode(&peer_id));
+
+        true
     }
 
 }
