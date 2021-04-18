@@ -82,6 +82,8 @@ impl Engine for PhaseQueenEngine {
                 Err(err) => error!("{}", err),
             }
 
+            block_publishing_ticker.tick(|| node.try_publish(state));
+
             if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(5) {
                 info!("My state: {:?}", state);
                 timestamp_log = time::Instant::now();
@@ -124,20 +126,16 @@ fn to_hex(bytes: &[u8]) -> String {
     buf
 }
 
-pub enum DevmodeMessage {
-    Ack,
-    Published,
-    Received,
+pub enum PhaseQueenMessage {
+    Exchange,
 }
 
-impl FromStr for DevmodeMessage {
+impl FromStr for PhaseQueenMessage {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "ack" => Ok(DevmodeMessage::Ack),
-            "published" => Ok(DevmodeMessage::Published),
-            "received" => Ok(DevmodeMessage::Received),
+            "exchange" => Ok(PhaseQueenMessage::Exchange),
             _ => Err("Invalid message type"),
         }
     }
@@ -154,7 +152,7 @@ fn handle_update(
         Ok(Update::BlockInvalid(block_id)) => node.on_block_invalid(block_id),
         Ok(Update::BlockCommit(block_id)) => node.on_block_commit(block_id, state),
         Ok(Update::PeerMessage(message, _)) => {
-            // node.on_peer_message(parsed_message, stazte)?
+            node.on_peer_message(message.header.message_type.as_ref(), *first(&message.content).unwrap(), state);
             return Ok(true);
         }
         Ok(Update::Shutdown) => {
@@ -177,4 +175,9 @@ fn handle_update(
     };
 
     Ok(true)
+}
+
+// https://stackoverflow.com/questions/36876570/return-first-item-of-vector
+fn first<T>(v: &Vec<T>) -> Option<&T> {
+    v.first()
 }

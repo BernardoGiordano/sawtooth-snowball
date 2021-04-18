@@ -12,8 +12,7 @@ pub enum PhaseQueenPhase {
     Idle,
     Exchange,
     QueenExchange,
-    // Node is waiting for a BlockCommit (bool indicates if it's a catch-up commit)
-    Finishing(bool),
+    Finishing,
 }
 
 impl fmt::Display for PhaseQueenPhase {
@@ -22,10 +21,10 @@ impl fmt::Display for PhaseQueenPhase {
             f,
             "{}",
             match self {
-                PhaseQueenPhase::Idle => "Idle".into(),
-                PhaseQueenPhase::Exchange => "Exchange".into(),
-                PhaseQueenPhase::QueenExchange => "QueenExchange".into(),
-                PhaseQueenPhase::Finishing(cu) => format!("Finishing {}", cu),
+                PhaseQueenPhase::Idle => "Idle",
+                PhaseQueenPhase::Exchange => "Exchange",
+                PhaseQueenPhase::QueenExchange => "QueenExchange",
+                PhaseQueenPhase::Finishing => "Finishing",
             },
         )
     }
@@ -49,6 +48,9 @@ pub struct PhaseQueenState {
 
     /// This node order number for queening
     pub order: u64,
+
+    /// This is needed to store v values
+    pub c: [u8; 2],
 
     /// This is needed to store the current k stage
     pub k: u64,
@@ -99,6 +101,7 @@ impl PhaseQueenState {
         PhaseQueenState {
             id,
             order: order,
+            c: [0, 0],
             k: 0,
             seq_num: head_block_num + 1,
             chain_head: BlockId::new(),
@@ -109,6 +112,32 @@ impl PhaseQueenState {
             exponential_retry_base: config.exponential_retry_base,
             exponential_retry_max: config.exponential_retry_max,
         }
+    }
+
+    /// Switch to the desired phase if it is the next phase of the algorithm; if it is not the next
+    /// phase, return an error
+    pub fn switch_phase(&mut self, desired_phase: PhaseQueenPhase) -> bool {
+        let next_phase = match self.phase {
+            PhaseQueenPhase::Idle => PhaseQueenPhase::Exchange,
+            PhaseQueenPhase::Exchange =>  PhaseQueenPhase::QueenExchange,
+            PhaseQueenPhase::QueenExchange => {
+                if self.k < self.f {
+                    PhaseQueenPhase::Exchange
+                } else { 
+                    PhaseQueenPhase::Finishing
+                }
+            }
+            PhaseQueenPhase::Finishing => PhaseQueenPhase::Idle,
+        };
+
+        if next_phase != desired_phase {
+            error!("Node attempted to go to {} when in phase {}", desired_phase, self.phase);
+            return false;
+        } else {
+            self.phase = desired_phase;
+        }
+        
+        true
     }
 
 }
