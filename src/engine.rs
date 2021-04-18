@@ -128,6 +128,7 @@ fn to_hex(bytes: &[u8]) -> String {
 
 pub enum PhaseQueenMessage {
     Exchange,
+    QueenExchange,
 }
 
 impl FromStr for PhaseQueenMessage {
@@ -136,6 +137,7 @@ impl FromStr for PhaseQueenMessage {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "exchange" => Ok(PhaseQueenMessage::Exchange),
+            "queen_exchange" => Ok(PhaseQueenMessage::QueenExchange),
             _ => Err("Invalid message type"),
         }
     }

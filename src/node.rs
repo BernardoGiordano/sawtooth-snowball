@@ -70,7 +70,7 @@ impl PhaseQueenNode {
 
     fn broadcast_value(&mut self, message: &str, v: u8, state: &mut PhaseQueenState) {
         self.service
-            .broadcast(message, vec![v])
+            .broadcast(message, vec![v, state.k as u8, state.seq_num as u8])
             .expect("Failed to broadcast value");
 
         self.on_peer_message(message, v, state);
@@ -134,11 +134,32 @@ impl PhaseQueenNode {
         info!("Got PeerMessage with message={} and v={}", message, v);
         match message {
             "exchange" => {
-                state.c[v as usize] += 1;
+                state.c[state.k as usize][v as usize] += 1;
 
-                if state.c[0] + state.c[1] == state.member_ids.len() as u8 {
-                    // TODO: got all messages, go ahead and change state
+                let arrived_values: u8 = state.c[state.k as usize][0] + state.c[state.k as usize][1];
+
+                if arrived_values == state.member_ids.len() as u8 {
+                   self.handle_exchange_finished(state);
+
+                   if state.queen_buffer[0] == 1 {
+                        // TODO: refactoring
+                        if state.c[state.k as usize][state.v as usize] < state.member_ids.len() as u8 - state.f as u8 {
+                            state.v = v;
+                        }
+                        self.handle_queen_exchange_finished(state);
+                   }
                 }
+            }
+            "queen_exchange" => {
+                if state.phase != PhaseQueenPhase::QueenExchange {
+                    state.queen_buffer[0] = 1;
+                    state.queen_buffer[1] = v;
+                    info!("QueenMessage received while in state={}", state);
+                }
+                else if state.c[state.k as usize][state.v as usize] < state.member_ids.len() as u8 - state.f as u8 {
+                    state.v = v;
+                }
+                self.handle_queen_exchange_finished(state);
             }
             _ => { }
         }
@@ -150,10 +171,35 @@ impl PhaseQueenNode {
     pub fn handle_block_new(&mut self, state: &mut PhaseQueenState) {
         state.switch_phase(PhaseQueenPhase::Exchange);
 
-        state.c = [0, 0];
+        state.v = self.rng.gen_range(0, 2);
 
-        let v: u8 = self.rng.gen_range(0, 2);
-        self.broadcast_value("exchange", v, state);
+        self.broadcast_value("exchange", state.v, state);
+    }
+
+    pub fn handle_exchange_finished(&mut self, state: &mut PhaseQueenState) {
+        state.switch_phase(PhaseQueenPhase::QueenExchange);
+
+        state.v = if state.c[state.k as usize][1] > 2 * state.f as u8 { 1 } else { 0 };
+        let is_queen: bool = state.k == state.order;
+
+        if is_queen {
+            self.broadcast_value("queen_exchange", state.v, state);
+        }
+    }
+
+    pub fn handle_queen_exchange_finished(&mut self, state: &mut PhaseQueenState) {
+        info!("BERNARDOOOOOOOOOOOO queen exchange has finished: state={}", state);
+
+        if state.k < state.f {
+            state.k += 1;
+            state.switch_phase(PhaseQueenPhase::Exchange);
+            self.broadcast_value("exchange", state.v, state);
+            warn!("MANDO IL NUOVO VALORE IN BROADCASTTTTTTTTTTTTT");
+        }
+        else {
+            state.switch_phase(PhaseQueenPhase::Finishing);
+            info!("BERNARDOOOOOOOOOOOOOO FINISHING: v={}", state.v);
+        }
     }
 
 }

@@ -49,8 +49,15 @@ pub struct PhaseQueenState {
     /// This node order number for queening
     pub order: u64,
 
+    /// This is the exchanged value for the algorithm 
+    pub v: u8,
+
+    /// Keep queen v if out of sequence
+    /// if buf[0] == 1 then out of sequencem buf[1] keeps the value
+    pub queen_buffer: [u8; 2],
+
     /// This is needed to store v values
-    pub c: [u8; 2],
+    pub c: Vec<[u8; 2]>,
 
     /// This is needed to store the current k stage
     pub k: u64,
@@ -98,10 +105,17 @@ impl PhaseQueenState {
 
         let order: u64 = config.members.clone().iter().position(|x| x == &id).unwrap() as u64;
 
+        let mut c = Vec::new();
+        for _ in 0..f+1 {
+            c.push([0, 0]);
+        }
+
         PhaseQueenState {
             id,
             order: order,
-            c: [0, 0],
+            v: 0,
+            queen_buffer: [0, 0],
+            c: c,
             k: 0,
             seq_num: head_block_num + 1,
             chain_head: BlockId::new(),
@@ -112,6 +126,14 @@ impl PhaseQueenState {
             exponential_retry_base: config.exponential_retry_base,
             exponential_retry_max: config.exponential_retry_max,
         }
+    }
+
+    pub fn reset_c(&mut self) {
+        let mut c = Vec::new();
+        for _ in 0..self.f + 1 {
+            c.push([0, 0]);
+        }
+        self.c = c;
     }
 
     /// Switch to the desired phase if it is the next phase of the algorithm; if it is not the next
