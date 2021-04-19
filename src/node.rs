@@ -32,9 +32,12 @@ impl PhaseQueenNode {
 
         state.chain_head = chain_head.block_id.clone();
 
-        n.service.initialize_block(None).unwrap_or_else(|err| {
-            error!("Couldn't initialize block on startup due to error: {}", err)
-        });
+        // TODO: GENERALIZE: ONLY FIRST NODE CAN PROPOSE
+        if state.order == 0 {
+            n.service.initialize_block(None).unwrap_or_else(|err| {
+                error!("Couldn't initialize block on startup due to error: {}", err)
+            });
+        }
         n
     }
 
@@ -48,9 +51,24 @@ impl PhaseQueenNode {
         state.idle_timeout.start();
     }
 
+    pub fn cancel_block(&mut self) {
+        debug!("Canceling block");
+        match self.service.cancel_block() {
+            Ok(_) => {}
+            Err(err) => {
+                panic!("Failed to cancel block: {:?}", err);
+            }
+        };
+    }
+
     /// At a regular interval, try to finalize a block when the primary is ready
     pub fn try_publish(&mut self, state: &mut PhaseQueenState) -> () {
         if state.phase != PhaseQueenPhase::Idle {
+            return;
+        }
+
+        // TODO: GENERALIZE: ONLY FIRST NODE CAN PROPOSE
+        if state.order != 0 {
             return;
         }
 
@@ -70,7 +88,14 @@ impl PhaseQueenNode {
 
     fn broadcast_value(&mut self, message: &str, v: u8, state: &mut PhaseQueenState) {
         self.service
-            .broadcast(message, vec![v, state.k as u8, state.seq_num as u8])
+            .broadcast(message, vec![
+                v, 
+                state.k as u8, 
+                state.seq_num as u8,
+                self.rng.gen_range(0, 255), // some random values
+                self.rng.gen_range(0, 255), // some random values
+                self.rng.gen_range(0, 255)  // some random values
+            ])
             .expect("Failed to broadcast value");
 
         self.on_peer_message(message, v, state);
@@ -101,7 +126,11 @@ impl PhaseQueenNode {
             return true;
         }
 
-        self.handle_block_new(state);
+        self.service
+            .check_blocks(vec![block.block_id.clone()])
+            .expect("Failed to check block");
+
+        self.handle_block_new(block.block_id, state);
         
         true
     }
@@ -136,18 +165,18 @@ impl PhaseQueenNode {
             "exchange" => {
                 state.c[state.k as usize][v as usize] += 1;
 
-                let arrived_values: u8 = state.c[state.k as usize][0] + state.c[state.k as usize][1];
+                let mut arrived_values: u8 = state.c[state.k as usize][0] + state.c[state.k as usize][1];
 
                 if arrived_values == state.member_ids.len() as u8 {
-                   self.handle_exchange_finished(state);
+                    self.handle_exchange_finished(state);
 
-                   if state.queen_buffer[0] == 1 {
+                    if state.queen_buffer[0] == 1 {
                         // TODO: refactoring
                         if state.c[state.k as usize][state.v as usize] < state.member_ids.len() as u8 - state.f as u8 {
                             state.v = v;
                         }
                         self.handle_queen_exchange_finished(state);
-                   }
+                    }
                 }
             }
             "queen_exchange" => {
@@ -168,9 +197,12 @@ impl PhaseQueenNode {
 
     // ---------- Methods for handling state changes ----------
 
-    pub fn handle_block_new(&mut self, state: &mut PhaseQueenState) {
+    pub fn handle_block_new(&mut self, block_id: BlockId, state: &mut PhaseQueenState) {
+        state.idle_timeout.stop();
+
         state.switch_phase(PhaseQueenPhase::Exchange);
 
+        state.decision_block = block_id;
         state.v = self.rng.gen_range(0, 2);
 
         self.broadcast_value("exchange", state.v, state);
@@ -188,7 +220,11 @@ impl PhaseQueenNode {
     }
 
     pub fn handle_queen_exchange_finished(&mut self, state: &mut PhaseQueenState) {
-        info!("BERNARDOOOOOOOOOOOO queen exchange has finished: state={}", state);
+        info!("[PHASEQUEEN] queen exchange has finished: state={}", state);
+
+        if state.phase != PhaseQueenPhase::QueenExchange {
+            return;
+        }
 
         if state.k < state.f {
             state.k += 1;
@@ -198,8 +234,45 @@ impl PhaseQueenNode {
         }
         else {
             state.switch_phase(PhaseQueenPhase::Finishing);
-            info!("BERNARDOOOOOOOOOOOOOO FINISHING: v={}", state.v);
+            info!("[PHASEQUEEN] FINISHING: v={}", state.v);
+            self.handle_decision(state);
         }
+    }
+
+    pub fn handle_decision(&mut self, state: &mut PhaseQueenState) {
+        if state.v == 1 {
+            info!("[PHASEQUEEN] Committing block {:?}", state.decision_block);
+            self.service
+                .commit_block(state.decision_block.clone())
+                .expect("Failed to commit block");
+
+            state.seq_num += 1;
+            state.chain_head = state.decision_block.clone();
+        } else {
+            info!("[PHASEQUEEN]O Failing block {:?}", state.decision_block);
+            self.service
+                .fail_block(state.decision_block.clone())
+                .expect("Failed to fail block");
+
+            // TODO: GENERALIZE: ONLY FIRST NODE CAN PROPOSE
+            // if state.order == 0 {
+            //     self.cancel_block();
+            // }
+        }
+
+        state.k = 0;
+        state.queen_buffer = [0, 0];
+        state.reset_c();
+
+        // TODO: GENERALIZE: ONLY FIRST NODE CAN PROPOSE
+        if state.order == 0 {
+            self.service.initialize_block(None).unwrap_or_else(|err| {
+                error!("Couldn't initialize block due to error: {}", err)
+            });
+        }
+
+        state.switch_phase(PhaseQueenPhase::Idle);
+        state.idle_timeout.start();
     }
 
 }

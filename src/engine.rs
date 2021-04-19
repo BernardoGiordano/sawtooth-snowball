@@ -43,7 +43,7 @@ impl Engine for PhaseQueenEngine {
 
         info!("PhaseQueen config loaded: {:?}", self.config);
 
-        let mut pbft_state = get_storage(&self.config.storage_location, || {
+        let mut phase_queen_state = get_storage(&self.config.storage_location, || {
             PhaseQueenState::new(
                 local_peer_info.peer_id.clone(),
                 chain_head.block_num,
@@ -52,7 +52,7 @@ impl Engine for PhaseQueenEngine {
         })
         .unwrap_or_else(|err| panic!("Failed to load state due to error: {}", err));
 
-        info!("PhaseQueenState state created: {}", **pbft_state.read());
+        info!("PhaseQueenState state created: {}", **phase_queen_state.read());
 
         let mut block_publishing_ticker = timing::Ticker::new(self.config.block_publishing_delay);
 
@@ -61,17 +61,17 @@ impl Engine for PhaseQueenEngine {
             chain_head,
             peers,
             service,
-            &mut pbft_state.write(),
+            &mut phase_queen_state.write(),
         );
 
-        node.start_idle_timeout(&mut pbft_state.write());
+        node.start_idle_timeout(&mut phase_queen_state.write());
 
         // TODO: debug, rimuovere poi
         let mut timestamp_log = time::Instant::now();
 
         loop {
             let incoming_message = updates.recv_timeout(time::Duration::from_millis(10));
-            let state = &mut **pbft_state.write();
+            let state = &mut **phase_queen_state.write();
 
             match handle_update(&mut node, incoming_message, state) {
                 Ok(again) => {

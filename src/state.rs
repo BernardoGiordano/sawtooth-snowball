@@ -68,6 +68,9 @@ pub struct PhaseQueenState {
     /// The block ID of the node's current chain head
     pub chain_head: BlockId,
 
+    /// Block id to accept
+    pub decision_block: BlockId,
+
     /// Current phase of the algorithm
     pub phase: PhaseQueenPhase,
 
@@ -119,6 +122,7 @@ impl PhaseQueenState {
             k: 0,
             seq_num: head_block_num + 1,
             chain_head: BlockId::new(),
+            decision_block: BlockId::new(),
             phase: PhaseQueenPhase::Idle,
             f,
             member_ids: config.members.clone(),
