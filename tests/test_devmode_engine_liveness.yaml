@@ -58,7 +58,7 @@ services:
       - 8008
     command: "bash -c \"\
       while true; do curl -s http://rest-api-0:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done; \
-      intkey workload --rate 1 --display-frequency 15 --urls http://rest-api-0:8008,http://rest-api-1:8008,http://rest-api-2:8008,http://rest-api-3:8008,http://rest-api-4:8008 \
+      intkey workload --rate 1 --display-frequency 15 --urls http://rest-api-0:8008,http://rest-api-1:8008,http://rest-api-2:8008,http://rest-api-3:8008 \
       \""
     stop_signal: SIGKILL
 
@@ -126,22 +126,6 @@ services:
     command: devmode-engine-rust --connect tcp://validator-3:5005 -vv
     stop_signal: SIGKILL
 
-  devmode-engine-4:
-    build:
-      context: ../
-      dockerfile: ./Dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: sawtooth-devmode$INSTALL_TYPE:$ISOLATION_ID
-    volumes:
-      - $SAWTOOTH_DEVMODE:/project/sawtooth-devmode
-      - cargo-registry:/root/.cargo/registry
-      - cargo-git:/root/.cargo/git
-    command: devmode-engine-rust --connect tcp://validator-4:5005 -vv
-    stop_signal: SIGKILL
-
   validator-0:
     image: hyperledger/sawtooth-validator:droptarget-nightly
     volumes:
@@ -157,7 +141,6 @@ services:
         sawadm keygen validator-1 && \
         sawadm keygen validator-2 && \
         sawadm keygen validator-3 && \
-        sawadm keygen validator-4 && \
         sawadm keygen && \
         sawset genesis \
           -k /etc/sawtooth/keys/validator.priv \
@@ -166,7 +149,7 @@ services:
           -k /etc/sawtooth/keys/validator.priv \
           sawtooth.consensus.algorithm.name=PolyShard \
           sawtooth.consensus.algorithm.version=0.1 \
-          sawtooth.consensus.algorithm.members=\\['\\\"'$$(cat /etc/sawtooth/keys/validator.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-1.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-2.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-3.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-4.pub)'\\\"'\\] \
+          sawtooth.consensus.algorithm.members=\\['\\\"'$$(cat /etc/sawtooth/keys/validator.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-1.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-2.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-3.pub)'\\\"'\\] \
           -o config.batch && \
         sawadm genesis \
           config-genesis.batch config.batch && \
@@ -258,31 +241,6 @@ services:
     \""
     stop_signal: SIGKILL
 
-  validator-4:
-    image: hyperledger/sawtooth-validator:droptarget-nightly
-    volumes:
-      - keys:/shared_keys
-    expose:
-      - 4004
-      - 8800
-      - 5005
-    environment:
-      RUST_BACKTRACE: full
-    command: "bash -c \"\
-        while true; do if [ -e /shared_keys/validator-4.pub ]; then mv /shared_keys/validator-4.priv /etc/sawtooth/keys/validator.priv && mv /shared_keys/validator-4.pub /etc/sawtooth/keys/validator.pub; break; fi; sleep 0.5; done; \
-        echo $$(cat /etc/sawtooth/keys/validator.pub); \
-        sawtooth-validator -v \
-            --endpoint tcp://validator-4:8800 \
-            --bind component:tcp://eth0:4004 \
-            --bind network:tcp://eth0:8800 \
-            --bind consensus:tcp://eth0:5005 \
-            --peering static \
-            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800
-            --scheduler parallel \
-            --fork-cache-keep-time 0 \
-    \""
-    stop_signal: SIGKILL
-
   rest-api-0:
     image: hyperledger/sawtooth-rest-api:nightly
     expose:
@@ -315,14 +273,6 @@ services:
     command: sawtooth-rest-api --connect tcp://validator-3:4004 --bind rest-api-3:8008
     stop_signal: SIGKILL
 
-  rest-api-4:
-    image: hyperledger/sawtooth-rest-api:nightly
-    expose:
-      - 4004
-      - 8008
-    command: sawtooth-rest-api --connect tcp://validator-4:4004 --bind rest-api-4:8008
-    stop_signal: SIGKILL
-
   intkey-tp-0:
     image: hyperledger/sawtooth-intkey-tp-python:nightly
     expose:
@@ -351,13 +301,6 @@ services:
     command: intkey-tp-python -C tcp://validator-3:4004
     stop_signal: SIGKILL
 
-  intkey-tp-4:
-    image: hyperledger/sawtooth-intkey-tp-python:nightly
-    expose:
-      - 4004
-    command: intkey-tp-python -C tcp://validator-4:4004
-    stop_signal: SIGKILL
-
   settings-tp-0:
     image: hyperledger/sawtooth-settings-tp:nightly
     expose:
@@ -384,11 +327,4 @@ services:
     expose:
       - 4004
     command: settings-tp -C tcp://validator-3:4004
-    stop_signal: SIGKILL
-
-  settings-tp-4:
-    image: hyperledger/sawtooth-settings-tp:nightly
-    expose:
-      - 4004
-    command: settings-tp -C tcp://validator-4:4004
     stop_signal: SIGKILL
