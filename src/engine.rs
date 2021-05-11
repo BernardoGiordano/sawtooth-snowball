@@ -5,23 +5,23 @@ use std::time;
 
 use crate::timing;
 use crate::storage::get_storage;
-use crate::config::PhaseQueenConfig;
-use crate::state::PhaseQueenState;
-use crate::node::PhaseQueenNode;
+use crate::config::PolyShardConfig;
+use crate::state::PolyShardState;
+use crate::node::PolyShardNode;
 
 use sawtooth_sdk::consensus::{engine::*, service::Service};
 
-pub struct PhaseQueenEngine {
-    config: PhaseQueenConfig,
+pub struct PolyShardEngine {
+    config: PolyShardConfig,
 }
 
-impl PhaseQueenEngine {
-    pub fn new(config: PhaseQueenConfig) -> Self {
-        PhaseQueenEngine { config }
+impl PolyShardEngine {
+    pub fn new(config: PolyShardConfig) -> Self {
+        PolyShardEngine { config }
     }
 }
 
-impl Engine for PhaseQueenEngine {
+impl Engine for PolyShardEngine {
     #[allow(clippy::cognitive_complexity)]
     fn start(
         &mut self,
@@ -41,10 +41,10 @@ impl Engine for PhaseQueenEngine {
         self.config
             .load_settings(chain_head.block_id.clone(), &mut *service);
 
-        info!("PhaseQueen config loaded: {:?}", self.config);
+        info!("PolyShard config loaded: {:?}", self.config);
 
         let mut phase_queen_state = get_storage(&self.config.storage_location, || {
-            PhaseQueenState::new(
+            PolyShardState::new(
                 local_peer_info.peer_id.clone(),
                 chain_head.block_num,
                 &self.config,
@@ -52,11 +52,11 @@ impl Engine for PhaseQueenEngine {
         })
         .unwrap_or_else(|err| panic!("Failed to load state due to error: {}", err));
 
-        info!("PhaseQueenState state created: {}", **phase_queen_state.read());
+        info!("PolyShardState state created: {}", **phase_queen_state.read());
 
         let mut block_publishing_ticker = timing::Ticker::new(self.config.block_publishing_delay);
 
-        let mut node = PhaseQueenNode::new(
+        let mut node = PolyShardNode::new(
             &self.config,
             chain_head,
             peers,
@@ -126,27 +126,27 @@ fn to_hex(bytes: &[u8]) -> String {
     buf
 }
 
-pub enum PhaseQueenMessage {
+pub enum PolyShardMessage {
     Exchange,
     QueenExchange,
 }
 
-impl FromStr for PhaseQueenMessage {
+impl FromStr for PolyShardMessage {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "exchange" => Ok(PhaseQueenMessage::Exchange),
-            "queen_exchange" => Ok(PhaseQueenMessage::QueenExchange),
+            "exchange" => Ok(PolyShardMessage::Exchange),
+            "queen_exchange" => Ok(PolyShardMessage::QueenExchange),
             _ => Err("Invalid message type"),
         }
     }
 }
 
 fn handle_update(
-    node: &mut PhaseQueenNode,
+    node: &mut PolyShardNode,
     incoming_message: Result<Update, RecvTimeoutError>,
-    state: &mut PhaseQueenState,
+    state: &mut PolyShardState,
 ) -> Result<bool, Error> {
     match incoming_message {
         Ok(Update::BlockNew(block)) => node.on_block_new(block, state),
@@ -154,11 +154,11 @@ fn handle_update(
         Ok(Update::BlockInvalid(block_id)) => node.on_block_invalid(block_id),
         Ok(Update::BlockCommit(block_id)) => node.on_block_commit(block_id, state),
         Ok(Update::PeerMessage(message, _)) => {
-            node.on_peer_message(message.header.message_type.as_ref(), *first(&message.content).unwrap(), state);
+            node.on_peer_message(message.header.message_type.as_ref(), state);
             return Ok(true);
         }
         Ok(Update::Shutdown) => {
-            info!("Received shutdown; stopping PBFT");
+            info!("Received shutdown; stopping PolyShard");
             return Ok(false);
         }
         Ok(Update::PeerConnected(info)) => {
@@ -171,7 +171,7 @@ fn handle_update(
         }
         Err(RecvTimeoutError::Timeout) => { return Ok(true); },
         Err(RecvTimeoutError::Disconnected) => {
-            error!("Disconnected from validator; stopping PhaseQueen");
+            error!("Disconnected from validator; stopping PolyShard");
             return Ok(false);
         }
     };

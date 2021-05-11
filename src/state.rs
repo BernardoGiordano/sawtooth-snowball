@@ -4,33 +4,29 @@ use std::time::Duration;
 use sawtooth_sdk::consensus::engine::{BlockId, PeerId};
 
 use crate::timing::Timeout;
-use crate::config::PhaseQueenConfig;
+use crate::config::PolyShardConfig;
 
-/// Phases of the PBFT algorithm, in `Normal` mode
+/// Phases of the PolyShard algorithm, in `Normal` mode
 #[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
-pub enum PhaseQueenPhase {
+pub enum PolyShardPhase {
     Idle,
-    Exchange,
-    QueenExchange,
     Finishing,
 }
 
-impl fmt::Display for PhaseQueenPhase {
+impl fmt::Display for PolyShardPhase {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                PhaseQueenPhase::Idle => "Idle",
-                PhaseQueenPhase::Exchange => "Exchange",
-                PhaseQueenPhase::QueenExchange => "QueenExchange",
-                PhaseQueenPhase::Finishing => "Finishing",
+                PolyShardPhase::Idle => "Idle",
+                PolyShardPhase::Finishing => "Finishing",
             },
         )
     }
 }
 
-impl fmt::Display for PhaseQueenState {
+impl fmt::Display for PolyShardState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -40,27 +36,14 @@ impl fmt::Display for PhaseQueenState {
     }
 }
 
-/// Information about the PBFT algorithm's state
+/// Information about the PolyShard algorithm's state
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PhaseQueenState {
+pub struct PolyShardState {
     /// This node's ID
     pub id: PeerId,
 
     /// This node order number for queening
     pub order: u64,
-
-    /// This is the exchanged value for the algorithm 
-    pub v: u8,
-
-    /// Keep queen v if out of sequence
-    /// if buf[0] == 1 then out of sequencem buf[1] keeps the value
-    pub queen_buffer: [u8; 2],
-
-    /// This is needed to store v values
-    pub c: Vec<[u8; 2]>,
-
-    /// This is needed to store the current k stage
-    pub k: u64,
 
     /// The node's current sequence number
     pub seq_num: u64,
@@ -72,13 +55,10 @@ pub struct PhaseQueenState {
     pub decision_block: BlockId,
 
     /// Current phase of the algorithm
-    pub phase: PhaseQueenPhase,
+    pub phase: PolyShardPhase,
 
-    /// List of members in the PBFT network, including this node
+    /// List of members in the PolyShard network, including this node
     pub member_ids: Vec<PeerId>,
-
-    /// The maximum number of faulty nodes in the network
-    pub f: u64,
 
     /// Timer used to make sure the primary publishes blocks in a timely manner. 
     pub idle_timeout: Timeout,
@@ -90,41 +70,23 @@ pub struct PhaseQueenState {
     pub exponential_retry_max: Duration,
 }
 
-impl PhaseQueenState {
-    /// Construct the initial state for a PBFT node
+impl PolyShardState {
+    /// Construct the initial state for a PolyShard node
     ///
     /// # Panics
     /// + If the network this node is on does not have enough nodes to be Byzantine fault tolernant
     #[allow(clippy::needless_pass_by_value)]
-    pub fn new(id: PeerId, head_block_num: u64, config: &PhaseQueenConfig) -> Self {
-
-        // TODO PHASEQUEEN: questo va aggiornato con il numero minimo di nodi phasequeen
-        // Maximum number of faulty nodes in this network. Panic if there are not enough nodes.
-        
-        let f = ((config.members.len() - 1) / 4) as u64;
-        if f == 0 {
-            panic!("This network does not contain enough nodes to be fault tolerant");
-        }
+    pub fn new(id: PeerId, head_block_num: u64, config: &PolyShardConfig) -> Self {
 
         let order: u64 = config.members.clone().iter().position(|x| x == &id).unwrap() as u64;
 
-        let mut c = Vec::new();
-        for _ in 0..f+1 {
-            c.push([0, 0]);
-        }
-
-        PhaseQueenState {
+        PolyShardState {
             id,
             order: order,
-            v: 0,
-            queen_buffer: [0, 0],
-            c: c,
-            k: 0,
             seq_num: head_block_num + 1,
             chain_head: BlockId::new(),
             decision_block: BlockId::new(),
-            phase: PhaseQueenPhase::Idle,
-            f,
+            phase: PolyShardPhase::Idle,
             member_ids: config.members.clone(),
             idle_timeout: Timeout::new(config.idle_timeout),
             exponential_retry_base: config.exponential_retry_base,
@@ -132,36 +94,10 @@ impl PhaseQueenState {
         }
     }
 
-    pub fn reset_c(&mut self) {
-        let mut c = Vec::new();
-        for _ in 0..self.f + 1 {
-            c.push([0, 0]);
-        }
-        self.c = c;
-    }
-
     /// Switch to the desired phase if it is the next phase of the algorithm; if it is not the next
     /// phase, return an error
-    pub fn switch_phase(&mut self, desired_phase: PhaseQueenPhase) -> bool {
-        let next_phase = match self.phase {
-            PhaseQueenPhase::Idle => PhaseQueenPhase::Exchange,
-            PhaseQueenPhase::Exchange =>  PhaseQueenPhase::QueenExchange,
-            PhaseQueenPhase::QueenExchange => {
-                if self.k < self.f {
-                    PhaseQueenPhase::Exchange
-                } else { 
-                    PhaseQueenPhase::Finishing
-                }
-            }
-            PhaseQueenPhase::Finishing => PhaseQueenPhase::Idle,
-        };
-
-        if next_phase != desired_phase {
-            error!("Node attempted to go to {} when in phase {}", desired_phase, self.phase);
-            return false;
-        } else {
-            self.phase = desired_phase;
-        }
+    pub fn switch_phase(&mut self, desired_phase: PolyShardPhase) -> bool {
+        info!("TODO: Trying to switch phase {} to {}", self.phase, desired_phase);
         
         true
     }

@@ -39,7 +39,7 @@ use log4rs::append::console::ConsoleAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 
-use engine::PhaseQueenEngine;
+use engine::PolyShardEngine;
 use sawtooth_sdk::consensus::zmq_driver::ZmqDriver;
 
 fn main() {
@@ -83,16 +83,16 @@ fn main() {
         process::exit(1);
     });
 
-    info!("Sawtooth PhaseQueen Engine ({})", env!("CARGO_PKG_VERSION"));
+    info!("Sawtooth PolyShard Engine ({})", env!("CARGO_PKG_VERSION"));
 
-    let mut phasequeen_config = config::PhaseQueenConfig::default();
+    let mut PolyShard_config = config::PolyShardConfig::default();
 
-    let phasequeen_engine = PhaseQueenEngine::new(phasequeen_config);
+    let PolyShard_engine = PolyShardEngine::new(PolyShard_config);
 
 
     let (driver, _stop) = ZmqDriver::new();
     driver
-        .start(endpoint, phasequeen_engine)
+        .start(endpoint, PolyShard_engine)
         .unwrap_or_else(|err| {
             error!("{}", err);
             process::exit(1);
