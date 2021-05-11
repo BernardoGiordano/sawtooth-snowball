@@ -72,9 +72,6 @@ pub struct PolyShardState {
 
 impl PolyShardState {
     /// Construct the initial state for a PolyShard node
-    ///
-    /// # Panics
-    /// + If the network this node is on does not have enough nodes to be Byzantine fault tolernant
     #[allow(clippy::needless_pass_by_value)]
     pub fn new(id: PeerId, head_block_num: u64, config: &PolyShardConfig) -> Self {
 

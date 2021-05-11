@@ -45,7 +45,7 @@ use sawtooth_sdk::consensus::zmq_driver::ZmqDriver;
 fn main() {
     let matches = clap_app!(("devmode-engine-rust") =>
         (version: crate_version!())
-        (about: "Devmode Consensus Engine (Rust)")
+        (about: "PolyShard Consensus Engine (Rust)")
         (@arg connect: -C --connect +takes_value
          "connection endpoint for validator")
         (@arg verbose: -v --verbose +multiple
@@ -85,14 +85,14 @@ fn main() {
 
     info!("Sawtooth PolyShard Engine ({})", env!("CARGO_PKG_VERSION"));
 
-    let mut PolyShard_config = config::PolyShardConfig::default();
+    let mut polyshard_config = config::PolyShardConfig::default();
 
-    let PolyShard_engine = PolyShardEngine::new(PolyShard_config);
+    let polyshard_engine = PolyShardEngine::new(polyshard_config);
 
 
     let (driver, _stop) = ZmqDriver::new();
     driver
-        .start(endpoint, PolyShard_engine)
+        .start(endpoint, polyshard_engine)
         .unwrap_or_else(|err| {
             error!("{}", err);
             process::exit(1);

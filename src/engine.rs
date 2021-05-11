@@ -43,7 +43,7 @@ impl Engine for PolyShardEngine {
 
         info!("PolyShard config loaded: {:?}", self.config);
 
-        let mut phase_queen_state = get_storage(&self.config.storage_location, || {
+        let mut polyshard_state = get_storage(&self.config.storage_location, || {
             PolyShardState::new(
                 local_peer_info.peer_id.clone(),
                 chain_head.block_num,
@@ -52,7 +52,7 @@ impl Engine for PolyShardEngine {
         })
         .unwrap_or_else(|err| panic!("Failed to load state due to error: {}", err));
 
-        info!("PolyShardState state created: {}", **phase_queen_state.read());
+        info!("PolyShardState state created: {}", **polyshard_state.read());
 
         let mut block_publishing_ticker = timing::Ticker::new(self.config.block_publishing_delay);
 
@@ -61,17 +61,17 @@ impl Engine for PolyShardEngine {
             chain_head,
             peers,
             service,
-            &mut phase_queen_state.write(),
+            &mut polyshard_state.write(),
         );
 
-        node.start_idle_timeout(&mut phase_queen_state.write());
+        node.start_idle_timeout(&mut polyshard_state.write());
 
         // TODO: debug, rimuovere poi
         let mut timestamp_log = time::Instant::now();
 
         loop {
             let incoming_message = updates.recv_timeout(time::Duration::from_millis(10));
-            let state = &mut **phase_queen_state.write();
+            let state = &mut **polyshard_state.write();
 
             match handle_update(&mut node, incoming_message, state) {
                 Ok(again) => {
@@ -98,7 +98,7 @@ impl Engine for PolyShardEngine {
     }
 
     fn name(&self) -> String {
-        "Devmode".into()
+        "PolyShard".into()
     }
 
     fn additional_protocols(&self) -> Vec<(String, String)> {
@@ -127,8 +127,7 @@ fn to_hex(bytes: &[u8]) -> String {
 }
 
 pub enum PolyShardMessage {
-    Exchange,
-    QueenExchange,
+
 }
 
 impl FromStr for PolyShardMessage {
@@ -136,8 +135,6 @@ impl FromStr for PolyShardMessage {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "exchange" => Ok(PolyShardMessage::Exchange),
-            "queen_exchange" => Ok(PolyShardMessage::QueenExchange),
             _ => Err("Invalid message type"),
         }
     }

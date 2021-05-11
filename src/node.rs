@@ -2,10 +2,9 @@ use sawtooth_sdk::consensus::engine::{Block, BlockId, PeerId, PeerInfo};
 use sawtooth_sdk::consensus::service::Service;
 
 use crate::config::{PolyShardConfig};
-use crate::state::{PolyShardState, PolyShardPhase};
+use crate::state::{PolyShardState};
 
 use rand;
-use rand::Rng;
 
 /// Contains the core logic of the PolyShard node
 pub struct PolyShardNode {
@@ -16,8 +15,6 @@ pub struct PolyShardNode {
 
 impl PolyShardNode {
     /// Construct a new PolyShard node
-    ///
-    /// If the node is the primary on start-up, it initializes a new block on the chain
     pub fn new(
         config: &PolyShardConfig,
         chain_head: Block,
