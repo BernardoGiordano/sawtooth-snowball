@@ -1,0 +1,5 @@
+git clone https://github.com/BernardoGiordano/sawtooth-snowball.git
+cd sawtooth-snowball
+docker build . -f Dockerfile -t sawtooth-snowball
+docker run -v $(pwd):/project/sawtooth-snowball -it sawtooth-snowball bash
+cargo build --release

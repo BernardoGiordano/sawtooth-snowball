@@ -1,4 +1,4 @@
-//! Initial configuration for a PolyShard node
+//! Initial configuration for a Snowball node
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -13,8 +13,8 @@ use crate::timing::retry_until_ok;
 /// Contains the initial configuration loaded from on-chain settings and local configuration. The
 /// `members` list is required; all other settings are optional (defaults used in their absence)
 #[derive(Debug)]
-pub struct PolyShardConfig {
-    // Members of the PolyShard network
+pub struct SnowballConfig {
+    // Members of the Snowball network
     pub members: Vec<PeerId>,
 
     /// How long to wait in between trying to publish blocks
@@ -32,13 +32,13 @@ pub struct PolyShardConfig {
     /// Must be longer than block_publishing_delay
     pub idle_timeout: Duration,
 
-    /// Where to store PolyShardState ("memory" or "disk+/path/to/file")
+    /// Where to store SnowballState ("memory" or "disk+/path/to/file")
     pub storage_location: String,
 }
 
-impl PolyShardConfig {
+impl SnowballConfig {
     pub fn default() -> Self {
-        PolyShardConfig {
+        SnowballConfig {
             members: Vec::new(),
             block_publishing_delay: Duration::from_millis(5000),
             update_recv_timeout: Duration::from_millis(10),
@@ -74,7 +74,7 @@ impl PolyShardConfig {
             },
         );
 
-        // Get the on-chain list of PolyShard members or panic if it is not provided; the network cannot
+        // Get the on-chain list of Snowball members or panic if it is not provided; the network cannot
         // function without this setting, since there is no way of knowing which nodes are members.
         self.members = get_members_from_settings(&settings);
 
@@ -122,7 +122,7 @@ fn merge_millis_setting_if_set(
     )
 }
 
-/// Get the list of PolyShard members as a Vec<PeerId> from settings
+/// Get the list of Snowball members as a Vec<PeerId> from settings
 ///
 /// # Panics
 /// + If the `sawtooth.consensus.algorithm.members` setting is unset or invalid
@@ -131,7 +131,7 @@ pub fn get_members_from_settings<S: std::hash::BuildHasher>(
 ) -> Vec<PeerId> {
     let members_setting_value = settings
         .get("sawtooth.consensus.algorithm.members")
-        .expect("'sawtooth.consensus.algorithm.members' is empty; this setting must exist to use PolyShard");
+        .expect("'sawtooth.consensus.algorithm.members' is empty; this setting must exist to use Snowball");
 
     let members: Vec<String> = serde_json::from_str(members_setting_value).unwrap_or_else(|err| {
         panic!(

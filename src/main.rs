@@ -39,13 +39,13 @@ use log4rs::append::console::ConsoleAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 
-use engine::PolyShardEngine;
+use engine::SnowballEngine;
 use sawtooth_sdk::consensus::zmq_driver::ZmqDriver;
 
 fn main() {
     let matches = clap_app!(("devmode-engine-rust") =>
         (version: crate_version!())
-        (about: "PolyShard Consensus Engine (Rust)")
+        (about: "Snowball Consensus Engine (Rust)")
         (@arg connect: -C --connect +takes_value
          "connection endpoint for validator")
         (@arg verbose: -v --verbose +multiple
@@ -83,16 +83,16 @@ fn main() {
         process::exit(1);
     });
 
-    info!("Sawtooth PolyShard Engine ({})", env!("CARGO_PKG_VERSION"));
+    info!("Sawtooth Snowball Engine ({})", env!("CARGO_PKG_VERSION"));
 
-    let mut polyshard_config = config::PolyShardConfig::default();
+    let mut snowball_config = config::SnowballConfig::default();
 
-    let polyshard_engine = PolyShardEngine::new(polyshard_config);
+    let snowball_engine = SnowballEngine::new(snowball_config);
 
 
     let (driver, _stop) = ZmqDriver::new();
     driver
-        .start(endpoint, polyshard_engine)
+        .start(endpoint, snowball_engine)
         .unwrap_or_else(|err| {
             error!("{}", err);
             process::exit(1);

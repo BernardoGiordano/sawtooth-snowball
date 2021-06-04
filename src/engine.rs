@@ -5,23 +5,23 @@ use std::time;
 
 use crate::timing;
 use crate::storage::get_storage;
-use crate::config::PolyShardConfig;
-use crate::state::PolyShardState;
-use crate::node::PolyShardNode;
+use crate::config::SnowballConfig;
+use crate::state::SnowballState;
+use crate::node::SnowballNode;
 
 use sawtooth_sdk::consensus::{engine::*, service::Service};
 
-pub struct PolyShardEngine {
-    config: PolyShardConfig,
+pub struct SnowballEngine {
+    config: SnowballConfig,
 }
 
-impl PolyShardEngine {
-    pub fn new(config: PolyShardConfig) -> Self {
-        PolyShardEngine { config }
+impl SnowballEngine {
+    pub fn new(config: SnowballConfig) -> Self {
+        SnowballEngine { config }
     }
 }
 
-impl Engine for PolyShardEngine {
+impl Engine for SnowballEngine {
     #[allow(clippy::cognitive_complexity)]
     fn start(
         &mut self,
@@ -41,10 +41,10 @@ impl Engine for PolyShardEngine {
         self.config
             .load_settings(chain_head.block_id.clone(), &mut *service);
 
-        info!("PolyShard config loaded: {:?}", self.config);
+        info!("Snowball config loaded: {:?}", self.config);
 
-        let mut polyshard_state = get_storage(&self.config.storage_location, || {
-            PolyShardState::new(
+        let mut snowball_state = get_storage(&self.config.storage_location, || {
+            SnowballState::new(
                 local_peer_info.peer_id.clone(),
                 chain_head.block_num,
                 &self.config,
@@ -52,26 +52,26 @@ impl Engine for PolyShardEngine {
         })
         .unwrap_or_else(|err| panic!("Failed to load state due to error: {}", err));
 
-        info!("PolyShardState state created: {}", **polyshard_state.read());
+        info!("SnowballState state created: {}", **snowball_state.read());
 
         let mut block_publishing_ticker = timing::Ticker::new(self.config.block_publishing_delay);
 
-        let mut node = PolyShardNode::new(
+        let mut node = SnowballNode::new(
             &self.config,
             chain_head,
             peers,
             service,
-            &mut polyshard_state.write(),
+            &mut snowball_state.write(),
         );
 
-        node.start_idle_timeout(&mut polyshard_state.write());
+        node.start_idle_timeout(&mut snowball_state.write());
 
         // TODO: debug, rimuovere poi
         let mut timestamp_log = time::Instant::now();
 
         loop {
             let incoming_message = updates.recv_timeout(time::Duration::from_millis(10));
-            let state = &mut **polyshard_state.write();
+            let state = &mut **snowball_state.write();
 
             match handle_update(&mut node, incoming_message, state) {
                 Ok(again) => {
@@ -98,7 +98,7 @@ impl Engine for PolyShardEngine {
     }
 
     fn name(&self) -> String {
-        "PolyShard".into()
+        "Snowball".into()
     }
 
     fn additional_protocols(&self) -> Vec<(String, String)> {
@@ -126,11 +126,11 @@ fn to_hex(bytes: &[u8]) -> String {
     buf
 }
 
-pub enum PolyShardMessage {
+pub enum SnowballMessage {
 
 }
 
-impl FromStr for PolyShardMessage {
+impl FromStr for SnowballMessage {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -141,9 +141,9 @@ impl FromStr for PolyShardMessage {
 }
 
 fn handle_update(
-    node: &mut PolyShardNode,
+    node: &mut SnowballNode,
     incoming_message: Result<Update, RecvTimeoutError>,
-    state: &mut PolyShardState,
+    state: &mut SnowballState,
 ) -> Result<bool, Error> {
     match incoming_message {
         Ok(Update::BlockNew(block)) => node.on_block_new(block, state),
@@ -155,7 +155,7 @@ fn handle_update(
             return Ok(true);
         }
         Ok(Update::Shutdown) => {
-            info!("Received shutdown; stopping PolyShard");
+            info!("Received shutdown; stopping Snowball");
             return Ok(false);
         }
         Ok(Update::PeerConnected(info)) => {
@@ -168,7 +168,7 @@ fn handle_update(
         }
         Err(RecvTimeoutError::Timeout) => { return Ok(true); },
         Err(RecvTimeoutError::Disconnected) => {
-            error!("Disconnected from validator; stopping PolyShard");
+            error!("Disconnected from validator; stopping Snowball");
             return Ok(false);
         }
     };

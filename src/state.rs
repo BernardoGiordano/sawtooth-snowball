@@ -4,29 +4,29 @@ use std::time::Duration;
 use sawtooth_sdk::consensus::engine::{BlockId, PeerId};
 
 use crate::timing::Timeout;
-use crate::config::PolyShardConfig;
+use crate::config::SnowballConfig;
 
-/// Phases of the PolyShard algorithm, in `Normal` mode
+/// Phases of the Snowball algorithm, in `Normal` mode
 #[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
-pub enum PolyShardPhase {
+pub enum SnowballPhase {
     Idle,
     Finishing,
 }
 
-impl fmt::Display for PolyShardPhase {
+impl fmt::Display for SnowballPhase {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                PolyShardPhase::Idle => "Idle",
-                PolyShardPhase::Finishing => "Finishing",
+                SnowballPhase::Idle => "Idle",
+                SnowballPhase::Finishing => "Finishing",
             },
         )
     }
 }
 
-impl fmt::Display for PolyShardState {
+impl fmt::Display for SnowballState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -36,9 +36,9 @@ impl fmt::Display for PolyShardState {
     }
 }
 
-/// Information about the PolyShard algorithm's state
+/// Information about the Snowball algorithm's state
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PolyShardState {
+pub struct SnowballState {
     /// This node's ID
     pub id: PeerId,
 
@@ -55,9 +55,9 @@ pub struct PolyShardState {
     pub decision_block: BlockId,
 
     /// Current phase of the algorithm
-    pub phase: PolyShardPhase,
+    pub phase: SnowballPhase,
 
-    /// List of members in the PolyShard network, including this node
+    /// List of members in the Snowball network, including this node
     pub member_ids: Vec<PeerId>,
 
     /// Timer used to make sure the primary publishes blocks in a timely manner. 
@@ -70,20 +70,20 @@ pub struct PolyShardState {
     pub exponential_retry_max: Duration,
 }
 
-impl PolyShardState {
-    /// Construct the initial state for a PolyShard node
+impl SnowballState {
+    /// Construct the initial state for a Snowball node
     #[allow(clippy::needless_pass_by_value)]
-    pub fn new(id: PeerId, head_block_num: u64, config: &PolyShardConfig) -> Self {
+    pub fn new(id: PeerId, head_block_num: u64, config: &SnowballConfig) -> Self {
 
         let order: u64 = config.members.clone().iter().position(|x| x == &id).unwrap() as u64;
 
-        PolyShardState {
+        SnowballState {
             id,
             order: order,
             seq_num: head_block_num + 1,
             chain_head: BlockId::new(),
             decision_block: BlockId::new(),
-            phase: PolyShardPhase::Idle,
+            phase: SnowballPhase::Idle,
             member_ids: config.members.clone(),
             idle_timeout: Timeout::new(config.idle_timeout),
             exponential_retry_base: config.exponential_retry_base,
@@ -93,7 +93,7 @@ impl PolyShardState {
 
     /// Switch to the desired phase if it is the next phase of the algorithm; if it is not the next
     /// phase, return an error
-    pub fn switch_phase(&mut self, desired_phase: PolyShardPhase) -> bool {
+    pub fn switch_phase(&mut self, desired_phase: SnowballPhase) -> bool {
         info!("TODO: Trying to switch phase {} to {}", self.phase, desired_phase);
         
         true

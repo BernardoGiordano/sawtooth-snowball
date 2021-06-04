@@ -1,28 +1,28 @@
 use sawtooth_sdk::consensus::engine::{Block, BlockId, PeerId, PeerInfo};
 use sawtooth_sdk::consensus::service::Service;
 
-use crate::config::{PolyShardConfig};
-use crate::state::{PolyShardState};
+use crate::config::{SnowballConfig};
+use crate::state::{SnowballState};
 
 use rand;
 
-/// Contains the core logic of the PolyShard node
-pub struct PolyShardNode {
+/// Contains the core logic of the Snowball node
+pub struct SnowballNode {
     /// Used for interactions with the validator
     pub service: Box<dyn Service>,
     pub rng: rand::ThreadRng,
 }
 
-impl PolyShardNode {
-    /// Construct a new PolyShard node
+impl SnowballNode {
+    /// Construct a new Snowball node
     pub fn new(
-        config: &PolyShardConfig,
+        config: &SnowballConfig,
         chain_head: Block,
         connected_peers: Vec<PeerInfo>,
         service: Box<dyn Service>,
-        state: &mut PolyShardState,
+        state: &mut SnowballState,
     ) -> Self {
-        let mut n = PolyShardNode {
+        let mut n = SnowballNode {
             service: service,
             rng: rand::thread_rng(),
         };
@@ -33,12 +33,12 @@ impl PolyShardNode {
     }
 
     /// Check to see if the idle timeout has expired
-    pub fn check_idle_timeout_expired(&mut self, state: &mut PolyShardState) -> bool {
+    pub fn check_idle_timeout_expired(&mut self, state: &mut SnowballState) -> bool {
         state.idle_timeout.check_expired()
     }
 
     /// Start the idle timeout
-    pub fn start_idle_timeout(&self, state: &mut PolyShardState) {
+    pub fn start_idle_timeout(&self, state: &mut SnowballState) {
         state.idle_timeout.start();
     }
 
@@ -53,17 +53,17 @@ impl PolyShardNode {
     }
 
     /// At a regular interval, try to finalize a block when the primary is ready
-    pub fn try_publish(&mut self, state: &mut PolyShardState) -> () {
+    pub fn try_publish(&mut self, state: &mut SnowballState) -> () {
 
     }
 
-    fn broadcast_value(&mut self, message: &str, v: u8, state: &mut PolyShardState) {
+    fn broadcast_value(&mut self, message: &str, v: u8, state: &mut SnowballState) {
 
     }
 
     // ---------- Methods for handling Updates from the Validator ----------
 
-    pub fn on_block_new(&mut self, block: Block, state: &mut PolyShardState) -> bool {
+    pub fn on_block_new(&mut self, block: Block, state: &mut SnowballState) -> bool {
         info!(
             "{}: Got BlockNew: {} / {}",
             state,
@@ -75,7 +75,7 @@ impl PolyShardNode {
         true
     }
 
-    pub fn on_block_valid(&mut self, block_id: BlockId, state: &mut PolyShardState) -> bool {
+    pub fn on_block_valid(&mut self, block_id: BlockId, state: &mut SnowballState) -> bool {
         info!("Got BlockValid: {}", hex::encode(&block_id));
 
         true
@@ -87,19 +87,19 @@ impl PolyShardNode {
         true
     }
 
-    pub fn on_block_commit(&mut self, block_id: BlockId, state: &mut PolyShardState) -> bool {
+    pub fn on_block_commit(&mut self, block_id: BlockId, state: &mut SnowballState) -> bool {
         info!("Got BlockCommit: {}", hex::encode(&block_id));
 
         true
     }
 
-    pub fn on_peer_connected(&mut self, peer_id: PeerId, state: &mut PolyShardState) -> bool {
+    pub fn on_peer_connected(&mut self, peer_id: PeerId, state: &mut SnowballState) -> bool {
         info!("Got PeerConnected: {:?}", hex::encode(&peer_id));
 
         true
     }
 
-    pub fn on_peer_message(&mut self, message: &str, state: &mut PolyShardState) -> bool {
+    pub fn on_peer_message(&mut self, message: &str, state: &mut SnowballState) -> bool {
         info!("Got PeerMessage with message={}", message);
 
         true
@@ -107,7 +107,7 @@ impl PolyShardNode {
 
     // ---------- Methods for handling state changes ----------
 
-    pub fn handle_block_new(&mut self, block_id: BlockId, state: &mut PolyShardState) {
+    pub fn handle_block_new(&mut self, block_id: BlockId, state: &mut SnowballState) {
         
     }
 
