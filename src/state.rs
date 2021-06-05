@@ -6,11 +6,20 @@ use sawtooth_sdk::consensus::engine::{BlockId, PeerId};
 use crate::timing::Timeout;
 use crate::config::SnowballConfig;
 
-/// Phases of the Snowball algorithm, in `Normal` mode
+/// Phases of the Snowball algorithm
 #[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
 pub enum SnowballPhase {
     Idle,
+    Listening,
     Finishing,
+}
+
+/// Decision states of the Snowball algorithm
+#[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
+pub enum SnowballDecisionState {
+    OK,
+    KO,
+    Undecided
 }
 
 impl fmt::Display for SnowballPhase {
@@ -20,6 +29,7 @@ impl fmt::Display for SnowballPhase {
             "{}",
             match self {
                 SnowballPhase::Idle => "Idle",
+                SnowballPhase::Listening => "Listening",
                 SnowballPhase::Finishing => "Finishing",
             },
         )
@@ -42,7 +52,7 @@ pub struct SnowballState {
     /// This node's ID
     pub id: PeerId,
 
-    /// This node order number for queening
+    /// This node order number in the member array
     pub order: u64,
 
     /// The node's current sequence number
@@ -56,6 +66,21 @@ pub struct SnowballState {
 
     // Sample size
     pub k: u64,
+
+    // Current color
+    pub current_color: SnowballDecisionState,
+
+    // Last color
+    pub last_color: SnowballDecisionState,
+
+    // Confidence counter
+    pub confidence_counter: u64,
+
+    // Decision array
+    pub decision_array: [u64; 2],
+
+    // Query replies
+    pub replies: Vec<SnowballDecisionState>,
 
     /// The block ID of the node's current chain head
     pub chain_head: BlockId,
@@ -93,6 +118,11 @@ impl SnowballState {
             alfa: config.alfa,
             beta: config.beta,
             k: config.k,
+            current_color: SnowballDecisionState::Undecided,
+            last_color: SnowballDecisionState::Undecided,
+            confidence_counter: 0,
+            decision_array: [0, 0],
+            replies: Vec::new(),
             chain_head: BlockId::new(),
             decision_block: BlockId::new(),
             phase: SnowballPhase::Idle,
@@ -106,7 +136,20 @@ impl SnowballState {
     /// Switch to the desired phase if it is the next phase of the algorithm; if it is not the next
     /// phase, return an error
     pub fn switch_phase(&mut self, desired_phase: SnowballPhase) -> bool {
-        info!("TODO: Trying to switch phase {} to {}", self.phase, desired_phase);
+        info!("Trying to switch phase {} to {}", self.phase, desired_phase);
+
+        let next_phase = match self.phase {
+            SnowballPhase::Idle => SnowballPhase::Listening,
+            SnowballPhase::Listening => SnowballPhase::Finishing,
+            SnowballPhase::Finishing => SnowballPhase::Idle
+        };
+
+        self.phase = if next_phase == desired_phase {
+            desired_phase 
+        } else {
+            error!("Node attempted to go to {} when in phase {}", desired_phase, self.phase);
+            next_phase 
+        };
         
         true
     }
