@@ -17,6 +17,12 @@ pub struct SnowballConfig {
     // Members of the Snowball network
     pub members: Vec<PeerId>,
 
+    // Alfa: majority threshold
+    pub alfa: u64,
+
+    // Beta: confidence threshold
+    pub beta: u64,
+
     /// How long to wait in between trying to publish blocks
     pub block_publishing_delay: Duration,
 
@@ -40,6 +46,8 @@ impl SnowballConfig {
     pub fn default() -> Self {
         SnowballConfig {
             members: Vec::new(),
+            alfa: 1,
+            beta: 1,
             block_publishing_delay: Duration::from_millis(5000),
             update_recv_timeout: Duration::from_millis(10),
             exponential_retry_base: Duration::from_millis(100),
@@ -69,6 +77,8 @@ impl SnowballConfig {
                         String::from("sawtooth.consensus.algorithm.members"),
                         String::from("sawtooth.consensus.algorithm.block_publishing_delay"),
                         String::from("sawtooth.consensus.algorithm.idle_timeout"),
+                        String::from("sawtooth.consensus.algorithm.alfa"),
+                        String::from("sawtooth.consensus.algorithm.beta"),
                     ],
                 )
             },
@@ -77,6 +87,18 @@ impl SnowballConfig {
         // Get the on-chain list of Snowball members or panic if it is not provided; the network cannot
         // function without this setting, since there is no way of knowing which nodes are members.
         self.members = get_members_from_settings(&settings);
+
+        self.alfa = settings
+            .get("sawtooth.consensus.algorithm.alfa")
+            .unwrap()
+            .parse::<u64>()
+            .expect("'sawtooth.consensus.algorithm.alfa' is empty; this setting must exist to use Snowball");
+
+        self.beta = settings
+            .get("sawtooth.consensus.algorithm.beta")
+            .unwrap()
+            .parse::<u64>()
+            .expect("'sawtooth.consensus.algorithm.members' is empty; this setting must exist to use Snowball");
 
         // Get durations
         merge_millis_setting_if_set(

@@ -48,6 +48,12 @@ pub struct SnowballState {
     /// The node's current sequence number
     pub seq_num: u64,
 
+    // Alfa parameter
+    pub alfa: u64,
+
+    // Beta parameter
+    pub beta: u64,
+
     /// The block ID of the node's current chain head
     pub chain_head: BlockId,
 
@@ -81,6 +87,8 @@ impl SnowballState {
             id,
             order: order,
             seq_num: head_block_num + 1,
+            alfa: config.alfa,
+            beta: config.beta,
             chain_head: BlockId::new(),
             decision_block: BlockId::new(),
             phase: SnowballPhase::Idle,
