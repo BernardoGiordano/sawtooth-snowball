@@ -84,7 +84,7 @@ impl Engine for SnowballEngine {
 
             block_publishing_ticker.tick(|| node.try_publish(state));
 
-            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(5) {
+            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(10) {
                 info!("My state: {:?}", state);
                 timestamp_log = time::Instant::now();
             }
@@ -150,8 +150,8 @@ fn handle_update(
         Ok(Update::BlockValid(block_id)) => node.on_block_valid(block_id, state),
         Ok(Update::BlockInvalid(block_id)) => node.on_block_invalid(block_id),
         Ok(Update::BlockCommit(block_id)) => node.on_block_commit(block_id, state),
-        Ok(Update::PeerMessage(message, _)) => {
-            node.on_peer_message(message.header.message_type.as_ref(), state);
+        Ok(Update::PeerMessage(message, sender_id)) => {
+            node.on_peer_message(message.header.message_type.as_ref(), &sender_id, *first(&message.content).unwrap(), state);
             return Ok(true);
         }
         Ok(Update::Shutdown) => {
@@ -160,10 +160,12 @@ fn handle_update(
         }
         Ok(Update::PeerConnected(info)) => {
             node.on_peer_connected(info.peer_id, state);
+            // TODO: SE UN NODO SI CONNETTE, AGGIUNGERLO ALLA LISTA DEI NODI CONOSCIUTI
             return Ok(true);
         }
         Ok(Update::PeerDisconnected(id)) => {
             info!("Received PeerDisconnected for peer ID: {:?}", id);
+            // TODO: SE UN NODO SI DISCONNETTE, RIMUOVERLO DALLA LISTA DEI NODI CONOSCIUTI
             return Ok(false);
         }
         Err(RecvTimeoutError::Timeout) => { return Ok(true); },

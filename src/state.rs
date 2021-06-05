@@ -15,7 +15,7 @@ pub enum SnowballPhase {
 }
 
 /// Decision states of the Snowball algorithm
-#[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize, Copy)]
 pub enum SnowballDecisionState {
     OK,
     KO,
@@ -31,6 +31,20 @@ impl fmt::Display for SnowballPhase {
                 SnowballPhase::Idle => "Idle",
                 SnowballPhase::Listening => "Listening",
                 SnowballPhase::Finishing => "Finishing",
+            },
+        )
+    }
+}
+
+impl fmt::Display for SnowballDecisionState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                SnowballDecisionState::OK => "OK",
+                SnowballDecisionState::KO => "KO",
+                SnowballDecisionState::Undecided => "Undecided",
             },
         )
     }
@@ -75,6 +89,9 @@ pub struct SnowballState {
 
     // Confidence counter
     pub confidence_counter: u64,
+
+    // Response buffer
+    pub response_buffer: [u64; 2],
 
     // Decision array
     pub decision_array: [u64; 2],
@@ -121,6 +138,7 @@ impl SnowballState {
             current_color: SnowballDecisionState::Undecided,
             last_color: SnowballDecisionState::Undecided,
             confidence_counter: 0,
+            response_buffer: [0, 0],
             decision_array: [0, 0],
             replies: Vec::new(),
             chain_head: BlockId::new(),
