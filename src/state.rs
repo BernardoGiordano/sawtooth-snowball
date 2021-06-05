@@ -54,6 +54,9 @@ pub struct SnowballState {
     // Beta parameter
     pub beta: u64,
 
+    // Sample size
+    pub k: u64,
+
     /// The block ID of the node's current chain head
     pub chain_head: BlockId,
 
@@ -89,6 +92,7 @@ impl SnowballState {
             seq_num: head_block_num + 1,
             alfa: config.alfa,
             beta: config.beta,
+            k: config.k,
             chain_head: BlockId::new(),
             decision_block: BlockId::new(),
             phase: SnowballPhase::Idle,

@@ -23,6 +23,9 @@ pub struct SnowballConfig {
     // Beta: confidence threshold
     pub beta: u64,
 
+    // sample size
+    pub k: u64,
+
     /// How long to wait in between trying to publish blocks
     pub block_publishing_delay: Duration,
 
@@ -46,8 +49,9 @@ impl SnowballConfig {
     pub fn default() -> Self {
         SnowballConfig {
             members: Vec::new(),
-            alfa: 1,
-            beta: 1,
+            alfa: 0,
+            beta: 0,
+            k: 0,
             block_publishing_delay: Duration::from_millis(5000),
             update_recv_timeout: Duration::from_millis(10),
             exponential_retry_base: Duration::from_millis(100),
@@ -79,6 +83,7 @@ impl SnowballConfig {
                         String::from("sawtooth.consensus.algorithm.idle_timeout"),
                         String::from("sawtooth.consensus.algorithm.alfa"),
                         String::from("sawtooth.consensus.algorithm.beta"),
+                        String::from("sawtooth.consensus.algorithm.k"),
                     ],
                 )
             },
@@ -98,7 +103,13 @@ impl SnowballConfig {
             .get("sawtooth.consensus.algorithm.beta")
             .unwrap()
             .parse::<u64>()
-            .expect("'sawtooth.consensus.algorithm.members' is empty; this setting must exist to use Snowball");
+            .expect("'sawtooth.consensus.algorithm.beta' is empty; this setting must exist to use Snowball");
+
+        self.k = settings
+            .get("sawtooth.consensus.algorithm.k")
+            .unwrap()
+            .parse::<u64>()
+            .expect("'sawtooth.consensus.algorithm.k' is empty; this setting must exist to use Snowball");
 
         // Get durations
         merge_millis_setting_if_set(

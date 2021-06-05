@@ -221,6 +221,7 @@ services:
           sawtooth.consensus.algorithm.members=\\['\\\"'$$(cat /etc/sawtooth/keys/validator.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-1.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-2.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-3.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-4.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-5.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-6.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-7.pub)'\\\"'\\] \
           sawtooth.consensus.algorithm.alfa=3 \
           sawtooth.consensus.algorithm.beta=2 \
+          sawtooth.consensus.algorithm.k=4 \
           -o config.batch && \
         sawadm genesis \
           config-genesis.batch config.batch && \
