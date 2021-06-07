@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+message SnowballMessage {
+  // Type of the message
+  string msg_type = 1;
+
+  // Sequence number
+  uint64 seq_num = 2;
+
+  // Snowball vote
+  uint8 vote = 3;
+
+  // Nonce
+  bytes nonce = 4;
+}

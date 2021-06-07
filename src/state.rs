@@ -1,5 +1,6 @@
 use std::fmt;
 use std::time::Duration;
+use std::collections::HashMap;
 
 use sawtooth_sdk::consensus::engine::{BlockId, PeerId};
 
@@ -54,8 +55,8 @@ impl fmt::Display for SnowballState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "({}, seq {})",
-            self.phase, self.seq_num,
+            "(process {}, {}, seq {})",
+            self.order, self.phase, self.seq_num,
         )
     }
 }
@@ -82,7 +83,7 @@ pub struct SnowballState {
     pub k: u64,
 
     // Current color
-    pub current_color: SnowballDecisionState,
+    pub decision_map: HashMap<u64, SnowballDecisionState>,
 
     // Last color
     pub last_color: SnowballDecisionState,
@@ -128,6 +129,9 @@ impl SnowballState {
 
         let order: u64 = config.members.clone().iter().position(|x| x == &id).unwrap() as u64;
 
+        let mut decision_map = HashMap::new();
+        decision_map.insert(0, SnowballDecisionState::Undecided);
+
         SnowballState {
             id,
             order: order,
@@ -135,7 +139,7 @@ impl SnowballState {
             alfa: config.alfa,
             beta: config.beta,
             k: config.k,
-            current_color: SnowballDecisionState::Undecided,
+            decision_map: decision_map,
             last_color: SnowballDecisionState::Undecided,
             confidence_counter: 0,
             response_buffer: [0, 0],

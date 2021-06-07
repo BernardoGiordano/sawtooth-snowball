@@ -31,6 +31,7 @@ pub mod timing;
 pub mod storage;
 pub mod state;
 pub mod node;
+pub mod message;
 
 use std::process;
 
@@ -85,7 +86,7 @@ fn main() {
 
     info!("Sawtooth Snowball Engine ({})", env!("CARGO_PKG_VERSION"));
 
-    let mut snowball_config = config::SnowballConfig::default();
+    let snowball_config = config::SnowballConfig::default();
 
     let snowball_engine = SnowballEngine::new(snowball_config);
 

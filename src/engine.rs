@@ -2,12 +2,14 @@ use std::fmt::{self, Write};
 use std::str::FromStr;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time;
+use std::str;
 
 use crate::timing;
 use crate::storage::get_storage;
 use crate::config::SnowballConfig;
 use crate::state::SnowballState;
 use crate::node::SnowballNode;
+use crate::message::SnowballMessage;
 
 use sawtooth_sdk::consensus::{engine::*, service::Service};
 
@@ -85,7 +87,7 @@ impl Engine for SnowballEngine {
             block_publishing_ticker.tick(|| node.try_publish(state));
 
             if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(10) {
-                info!("My state: {:?}", state);
+                info!("My state: {}", state);
                 timestamp_log = time::Instant::now();
             }
         }
@@ -126,20 +128,6 @@ fn to_hex(bytes: &[u8]) -> String {
     buf
 }
 
-pub enum SnowballMessage {
-
-}
-
-impl FromStr for SnowballMessage {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            _ => Err("Invalid message type"),
-        }
-    }
-}
-
 fn handle_update(
     node: &mut SnowballNode,
     incoming_message: Result<Update, RecvTimeoutError>,
@@ -151,7 +139,10 @@ fn handle_update(
         Ok(Update::BlockInvalid(block_id)) => node.on_block_invalid(block_id),
         Ok(Update::BlockCommit(block_id)) => node.on_block_commit(block_id, state),
         Ok(Update::PeerMessage(message, sender_id)) => {
-            node.on_peer_message(message.header.message_type.as_ref(), &sender_id, *first(&message.content).unwrap(), state);
+            let content_string = str::from_utf8(message.content.as_ref()).unwrap();
+            let payload: SnowballMessage = serde_json::from_str(content_string).unwrap();
+            // info!("Message content: {}", payload);
+            node.on_peer_message(message.header.message_type.as_ref(), &sender_id, payload, state);
             return Ok(true);
         }
         Ok(Update::Shutdown) => {

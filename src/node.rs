@@ -3,6 +3,7 @@ use sawtooth_sdk::consensus::service::Service;
 
 use crate::config::{SnowballConfig};
 use crate::state::{SnowballState, SnowballPhase, SnowballDecisionState};
+use crate::message::{SnowballMessage};
 
 use std::collections::HashSet;
 
@@ -93,19 +94,24 @@ impl SnowballNode {
 
     }
 
-    fn send_peer_notification(&mut self, peer_id: &PeerId, message: &str) {
-        self.send_peer_message(peer_id, message, 0);
+    fn send_peer_notification(&mut self, peer_id: &PeerId, message: &str, seq_num: u64) {
+        self.send_peer_message(peer_id, message, 0, seq_num);
     }
 
-    fn send_peer_message(&mut self, peer_id: &PeerId, message: &str, v: u8) {
+    fn send_peer_message(&mut self, peer_id: &PeerId, message: &str, v: u8, seq_num: u64) {
         debug!("Sending {} message to {:?}", message, peer_id);
         let nonce = Nonce::new().into_bytes();
-        let mut payload = Vec::new();
-        payload.append(&mut vec![v]);
-        payload.append(&mut nonce.to_vec());
+        // let mut payload = Vec::new();
+        // payload.append(&mut vec![v]);
+        // payload.append(&mut nonce.to_vec());
+        let mut payload = SnowballMessage::new();
+        payload.vote = v;
+        payload.nonce = nonce.to_vec();
+        payload.seq_num = seq_num;
+        payload.message_type = String::from(message);
 
         self.service
-            .send_to(&peer_id, message, payload)
+            .send_to(&peer_id, message, serde_json::to_string(&payload).unwrap().as_bytes().to_vec())
             .expect("Failed to send message");
     }
 
@@ -149,7 +155,7 @@ impl SnowballNode {
         let sample = self.select_node_sample(state);
         for index in sample {
             let peer_id = &state.member_ids[index];
-            self.send_peer_notification(&peer_id, "request");
+            self.send_peer_notification(&peer_id, "request", state.seq_num);
         }
     }
 
@@ -177,27 +183,41 @@ impl SnowballNode {
         true
     }
 
-    pub fn on_peer_message(&mut self, message: &str, sender_id: &PeerId, value: u8, state: &mut SnowballState) -> bool {
-        info!("Got PeerMessage with message={}", message);
+    pub fn on_peer_message(&mut self, message: &str, sender_id: &PeerId, payload: SnowballMessage, state: &mut SnowballState) -> bool {
+        // info!("Got PeerMessage with message={}", message);
+
+        if state.seq_num != payload.seq_num {
+            warn!("BERNARDOOOOOOO RICEVUTO MESSAGGIO CON NUMERO DI SEQUENZA SBALLATO: seq {}, resp seq: {}, message: {}", state.seq_num, payload.seq_num, payload);
+        }
 
         match message {
             "request" => {
-                if state.phase == SnowballPhase::Idle || state.current_color == SnowballDecisionState::Undecided {
+                if payload.seq_num > state.seq_num {
+                    warn!("ATTENZIONE, CHIESTO STATO PER SEQ_NUM {} MA IO SONO A SEQ_NUM {}", payload.seq_num, state.seq_num);
                     return false;
                 }
-                let current_value: u8 = if state.current_color == SnowballDecisionState::OK { 1 } else { 0 };
-                self.send_peer_message(sender_id, "response", current_value)
+
+                let seq_value = state.decision_map.get(&payload.seq_num);
+                if seq_value == None {
+                    warn!("BERNARDOOOOOOO NON DOVREBBE SUCCEDERE: seq_num {}", payload.seq_num);
+                    return false;
+                }
+
+                let current_value: u8 = if *seq_value.unwrap() == SnowballDecisionState::OK { 1 } else { 0 };
+                self.send_peer_message(sender_id, "response", current_value, state.seq_num);
             }
             "response" => {
                 if state.phase != SnowballPhase::Listening {
+                    warn!("BERNARDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO RICEVUTO MESSAGGIO DI RESPONSE IN MOMENTO SCORRETTO: state={}", state);
                     return false;
                 }
                 // TODO: CONTROLLARE SE IL MESSAGGIO AVVIENE DA UN PROCESSO PER
                 // IL QUALE MI ASPETTAVO DI RICEVERLO
-                if value != 0 && value != 1 {
+                if payload.vote != 0 && payload.vote != 1 {
+                    warn!("BERNARDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO RICEVUTO MESSAGGIO DI RESPONSE CON VALUE SBAGLIATO: phase={}, value={}", state.phase, payload.vote);
                     return false;
                 }
-                state.response_buffer[value as usize] += 1;
+                state.response_buffer[payload.vote as usize] += 1;
                 if state.response_buffer[0] + state.response_buffer[1] == state.k {
                     info!("Process {} received all the messages for this round: {:?}", state.order, state.response_buffer);
                     self.on_values_ready(state);
@@ -236,8 +256,9 @@ impl SnowballNode {
             if state.response_buffer[i] >= state.alfa {
                 majority = true;
                 state.decision_array[i] += 1;
-                if state.decision_array[i] > state.decision_array[state.current_color as usize] {
-                    state.current_color = col_i;
+                let current_color = state.decision_map.get(&state.seq_num).unwrap();
+                if state.decision_array[i] > state.decision_array[self.decision_state_to_u8(*current_color) as usize] {
+                    state.decision_map.insert(state.seq_num, col_i);
                 }
                 if col_i != state.last_color {
                     state.last_color = col_i;
@@ -267,7 +288,12 @@ impl SnowballNode {
         
         // algorithm starts on block new message
         let my_decision = SnowballDecisionState::OK;
-        state.current_color = my_decision.clone();
+
+        if state.seq_num > 0 {
+            state.seq_num += 1;
+        }
+
+        state.decision_map.insert(state.seq_num, my_decision.clone());
         state.last_color = my_decision.clone();
         state.confidence_counter = 0;
         state.decision_array = [0, 0];
@@ -278,14 +304,13 @@ impl SnowballNode {
     }
 
     pub fn handle_decision(&mut self, state: &mut SnowballState) {
-        info!("Process {} deciding {} for block seq {}", state.order, state.current_color, state.seq_num);
+        let decision = state.decision_map.get(&state.seq_num).unwrap();
+        info!("Process {} deciding {} for block seq {}", state.order, decision, state.seq_num);
         
-        if state.current_color == SnowballDecisionState::OK {
+        if *decision == SnowballDecisionState::OK {
             self.service
                 .commit_block(state.decision_block.clone())
                 .expect("Failed to commit block");
-
-            state.seq_num += 1;
             state.chain_head = state.decision_block.clone();
         }
         else {
