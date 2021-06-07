@@ -52,7 +52,7 @@ impl SnowballConfig {
             alfa: 0,
             beta: 0,
             k: 0,
-            block_publishing_delay: Duration::from_millis(5000),
+            block_publishing_delay: Duration::from_millis(10000),
             update_recv_timeout: Duration::from_millis(10),
             exponential_retry_base: Duration::from_millis(100),
             exponential_retry_max: Duration::from_millis(60000),
