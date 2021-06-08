@@ -46,14 +46,14 @@ impl SnowballNode {
     }
 
     /// Check to see if the idle timeout has expired
-    pub fn check_idle_timeout_expired(&mut self, state: &mut SnowballState) -> bool {
-        state.idle_timeout.check_expired()
-    }
+    // pub fn check_idle_timeout_expired(&mut self, state: &mut SnowballState) -> bool {
+    //     state.idle_timeout.check_expired()
+    // }
 
     /// Start the idle timeout
-    pub fn start_idle_timeout(&self, state: &mut SnowballState) {
-        state.idle_timeout.start();
-    }
+    // pub fn start_idle_timeout(&self, state: &mut SnowballState) {
+    //     state.idle_timeout.start();
+    // }
 
     pub fn cancel_block(&mut self) {
         debug!("Canceling block");
@@ -88,10 +88,6 @@ impl SnowballNode {
             }
             Err(err) => { error!("Could not finalize block: {}", err); }
         }
-    }
-
-    fn broadcast_value(&mut self, message: &str, v: u8, state: &mut SnowballState) {
-
     }
 
     fn send_peer_notification(&mut self, peer_id: &PeerId, message: &str, seq_num: u64) {
@@ -147,7 +143,7 @@ impl SnowballNode {
     }
 
     pub fn prepare_and_forward_peer_requests(&mut self, sample: HashSet<usize>, state: &mut SnowballState) {
-        info!("Preparing new peer notifications.");
+        debug!("Preparing new peer notifications.");
         state.response_buffer = [0, 0];
         for index in sample {
             let peer_id = &state.member_ids[index];
@@ -181,23 +177,22 @@ impl SnowballNode {
     }
 
     pub fn on_peer_message(&mut self, message: &str, sender_id: &PeerId, payload: SnowballMessage, state: &mut SnowballState) -> bool {
-        // info!("Got PeerMessage with message={}", message);
+        debug!("Got PeerMessage with message {}", message);
 
         if state.seq_num != payload.seq_num {
-            warn!("BERNARDOOOOOOO RICEVUTO MESSAGGIO CON NUMERO DI SEQUENZA SBALLATO: seq {}, resp seq: {}, message: {}", state.seq_num, payload.seq_num, payload);
+            warn!("Process {} received message for seq_num {} when it was on seq_num {}", state.order, payload.seq_num, state.seq_num);
         }
 
         match message {
             "request" => {
                 if payload.seq_num > state.seq_num {
-                    warn!("ATTENZIONE, CHIESTO STATO PER SEQ_NUM {} MA IO SONO A SEQ_NUM {}", payload.seq_num, state.seq_num);
                     self.send_peer_notification(sender_id, "unavailable", payload.seq_num);
                     return false;
                 }
 
                 let seq_value = state.decision_map.get(&payload.seq_num);
                 if seq_value == None {
-                    warn!("BERNARDOOOOOOO NON DOVREBBE SUCCEDERE: seq_num {}", payload.seq_num);
+                    error!("Process {} unable to find seq_num in map for seq_num {}. Doing nothing.", state.order, payload.seq_num);
                     return false;
                 }
 
@@ -206,19 +201,20 @@ impl SnowballNode {
             }
             "response" => {
                 if state.phase != SnowballPhase::Listening {
-                    warn!("BERNARDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO RICEVUTO MESSAGGIO DI RESPONSE IN MOMENTO SCORRETTO: state={}", state);
+                    warn!("Process {} received a response message when it was not listening. Current state: {}", state.order, state);
                     return false;
                 }
                 if !state.response_sample_ids.contains(sender_id) {
-                    warn!("BERNARDOOOOOOO NON ASPETTAVO MESSAGGIO DA NODO {:?}", sender_id);
+                    warn!("Process {} received unwaited message from {:?}", state.order, sender_id);
                     return false;
                 }
-                // il messaggio arriva da un nodo dal quale me lo aspettavo,
-                // lo tolgo dal set
+
+                // a message arrived from a node I was waiting for a response, I
+                // remove it from the waiting response set
                 state.response_sample_ids.remove(sender_id);
 
                 if payload.vote != 0 && payload.vote != 1 {
-                    warn!("BERNARDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO RICEVUTO MESSAGGIO DI RESPONSE CON VALUE SBAGLIATO: phase={}, value={}", state.phase, payload.vote);
+                    error!("Process {} received invalid vote ({}) from node {:?}", state.order, payload.vote, sender_id);
                     return false;
                 }
                 state.response_buffer[payload.vote as usize] += 1;
@@ -228,19 +224,22 @@ impl SnowballNode {
                 }
             }
             "unavailable" => {
-                info!("Got PeerMessage with message={}", message);
                 if state.phase != SnowballPhase::Listening {
-                    warn!("BERNARDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO RICEVUTO MESSAGGIO DI RESPONSE IN MOMENTO SCORRETTO: state={}", state);
+                    warn!("Process {} received a `unexpected` message when it was not listening. Current state: {}", state.order, state);
                     return false;
                 }
+
                 if !state.response_sample_ids.contains(sender_id) {
-                    warn!("BERNARDOOOOOOO NON ASPETTAVO MESSAGGIO DA NODO {:?}", sender_id);
+                    warn!("Process {} received unwaited message from {:?}", state.order, sender_id);
                     return false;
                 }
-                // il messaggio arriva da un nodo dal quale me lo aspettavo,
-                // lo tolgo dal set
+
+                // a message arrived from a node I was waiting for a response, I
+                // remove it from the waiting response set
                 state.response_sample_ids.remove(sender_id);
 
+                // I find another node to send a request to, which is not in my
+                // current waiting response set
                 let mut peer_id = Vec::new();
                 let missing_responses_len = state.response_sample_ids.len();
                 while state.response_sample_ids.len() < missing_responses_len + 1 {
@@ -261,13 +260,11 @@ impl SnowballNode {
     }
 
     pub fn usize_to_decision_state(&mut self, i: usize) -> SnowballDecisionState {
-        if i == 0 {
-            return SnowballDecisionState::KO;
-        }
-        else if i == 1 {
-            return SnowballDecisionState::OK;
-        }
-        panic!("Invalid value: {}", i);
+        match i {
+            0 => SnowballDecisionState::KO,
+            1 => SnowballDecisionState::OK,
+            _ => { panic!("Invalid value: {}", i); }
+        }       
     }
 
     pub fn decision_state_to_u8(&mut self, decision: SnowballDecisionState) -> u8 {
@@ -317,13 +314,10 @@ impl SnowballNode {
 
     pub fn handle_block_new(&mut self, block_id: BlockId, state: &mut SnowballState) {
         state.decision_block = block_id;
+        state.seq_num += 1;
         
         // algorithm starts on block new message
         let my_decision = SnowballDecisionState::OK;
-
-        if state.seq_num > 0 {
-            state.seq_num += 1;
-        }
 
         state.decision_map.insert(state.seq_num, my_decision.clone());
         state.last_color = my_decision.clone();
@@ -376,7 +370,7 @@ impl SnowballNode {
                 }
             }
         }
-        info!("Set for node {:?}: {:?}", state.order, set);
+        debug!("Set for node {:?}: {:?}", state.order, set);
         set
     }
 

@@ -1,5 +1,4 @@
 use std::fmt::{self, Write};
-use std::str::FromStr;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time;
 use std::str;
@@ -66,7 +65,7 @@ impl Engine for SnowballEngine {
             &mut snowball_state.write(),
         );
 
-        node.start_idle_timeout(&mut snowball_state.write());
+        // node.start_idle_timeout(&mut snowball_state.write());
 
         // TODO: debug, rimuovere poi
         let mut timestamp_log = time::Instant::now();

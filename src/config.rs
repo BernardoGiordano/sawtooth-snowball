@@ -65,10 +65,16 @@ impl SnowballConfig {
     ///
     /// Configuration loads the following settings:
     /// + `sawtooth.consensus.algorithm.members` (required)
-    /// + `sawtooth.consensus.algorithm.block_publishing_delay` (optional, default 1000 ms)
+    /// + `sawtooth.consensus.algorithm.alfa` (required)
+    /// + `sawtooth.consensus.algorithm.beta` (required)
+    /// + `sawtooth.consensus.algorithm.k` (required)
+    /// + `sawtooth.consensus.algorithm.block_publishing_delay` (optional, default 10000 ms)
     ///
     /// # Panics
     /// + If the `sawtooth.consensus.algorithm.members` setting is not provided or is invalid
+    /// + If the `sawtooth.consensus.algorithm.alfa` setting is not provided or is invalid
+    /// + If the `sawtooth.consensus.algorithm.beta` setting is not provided or is invalid
+    /// + If the `sawtooth.consensus.algorithm.k` setting is not provided or is invalid
     pub fn load_settings(&mut self, block_id: BlockId, service: &mut dyn Service) {
         debug!("Getting on-chain settings for config");
         let settings: HashMap<String, String> = retry_until_ok(

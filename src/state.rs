@@ -113,7 +113,7 @@ pub struct SnowballState {
     pub member_ids: Vec<PeerId>,
 
     /// Timer used to make sure the primary publishes blocks in a timely manner
-    pub idle_timeout: Timeout,
+    // pub idle_timeout: Timeout,
 
     /// The base time to use for retrying with exponential backoff
     pub exponential_retry_base: Duration,
@@ -149,7 +149,7 @@ impl SnowballState {
             decision_block: BlockId::new(),
             phase: SnowballPhase::Idle,
             member_ids: config.members.clone(),
-            idle_timeout: Timeout::new(config.idle_timeout),
+            // idle_timeout: Timeout::new(config.idle_timeout),
             exponential_retry_base: config.exponential_retry_base,
             exponential_retry_max: config.exponential_retry_max,
         }
