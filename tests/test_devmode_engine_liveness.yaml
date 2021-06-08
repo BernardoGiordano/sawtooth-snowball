@@ -222,6 +222,7 @@ services:
           sawtooth.consensus.algorithm.alfa=3 \
           sawtooth.consensus.algorithm.beta=2 \
           sawtooth.consensus.algorithm.k=4 \
+          sawtooth.consensus.algorithm.block_publishing_delay=6000 \
           -o config.batch && \
         sawadm genesis \
           config-genesis.batch config.batch && \

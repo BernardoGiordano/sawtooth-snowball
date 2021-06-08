@@ -86,7 +86,7 @@ impl Engine for SnowballEngine {
 
             block_publishing_ticker.tick(|| node.try_publish(state));
 
-            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(10) {
+            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(4) {
                 info!("My state: {}", state);
                 timestamp_log = time::Instant::now();
             }
@@ -146,7 +146,7 @@ fn handle_update(
             return Ok(true);
         }
         Ok(Update::Shutdown) => {
-            info!("Received shutdown; stopping Snowball");
+            info!("Received shutdown; stopping Snowball. Final state is: {:?}", state);
             return Ok(false);
         }
         Ok(Update::PeerConnected(info)) => {
@@ -167,9 +167,4 @@ fn handle_update(
     };
 
     Ok(true)
-}
-
-// https://stackoverflow.com/questions/36876570/return-first-item-of-vector
-fn first<T>(v: &Vec<T>) -> Option<&T> {
-    v.first()
 }

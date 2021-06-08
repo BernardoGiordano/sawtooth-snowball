@@ -1,6 +1,6 @@
 use std::fmt;
 use std::time::Duration;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use sawtooth_sdk::consensus::engine::{BlockId, PeerId};
 
@@ -55,8 +55,8 @@ impl fmt::Display for SnowballState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "(process {}, {}, seq {})",
-            self.order, self.phase, self.seq_num,
+            "(process {}, {}, seq {}, chain head: {:?})",
+            self.order, self.phase, self.seq_num, self.chain_head
         )
     }
 }
@@ -97,8 +97,8 @@ pub struct SnowballState {
     // Decision array
     pub decision_array: [u64; 2],
 
-    // Query replies
-    pub replies: Vec<SnowballDecisionState>,
+    // Set containing ids from peers we're waiting response
+    pub response_sample_ids: HashSet<PeerId>,
 
     /// The block ID of the node's current chain head
     pub chain_head: BlockId,
@@ -112,7 +112,7 @@ pub struct SnowballState {
     /// List of members in the Snowball network, including this node
     pub member_ids: Vec<PeerId>,
 
-    /// Timer used to make sure the primary publishes blocks in a timely manner. 
+    /// Timer used to make sure the primary publishes blocks in a timely manner
     pub idle_timeout: Timeout,
 
     /// The base time to use for retrying with exponential backoff
@@ -144,7 +144,7 @@ impl SnowballState {
             confidence_counter: 0,
             response_buffer: [0, 0],
             decision_array: [0, 0],
-            replies: Vec::new(),
+            response_sample_ids: HashSet::new(),
             chain_head: BlockId::new(),
             decision_block: BlockId::new(),
             phase: SnowballPhase::Idle,

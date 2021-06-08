@@ -101,9 +101,6 @@ impl SnowballNode {
     fn send_peer_message(&mut self, peer_id: &PeerId, message: &str, v: u8, seq_num: u64) {
         debug!("Sending {} message to {:?}", message, peer_id);
         let nonce = Nonce::new().into_bytes();
-        // let mut payload = Vec::new();
-        // payload.append(&mut vec![v]);
-        // payload.append(&mut nonce.to_vec());
         let mut payload = SnowballMessage::new();
         payload.vote = v;
         payload.nonce = nonce.to_vec();
@@ -149,13 +146,13 @@ impl SnowballNode {
         true
     }
 
-    pub fn prepare_and_forward_peer_requests(&mut self, state: &mut SnowballState) {
+    pub fn prepare_and_forward_peer_requests(&mut self, sample: HashSet<usize>, state: &mut SnowballState) {
         info!("Preparing new peer notifications.");
         state.response_buffer = [0, 0];
-        let sample = self.select_node_sample(state);
         for index in sample {
             let peer_id = &state.member_ids[index];
             self.send_peer_notification(&peer_id, "request", state.seq_num);
+            state.response_sample_ids.insert(peer_id.clone());
         }
     }
 
@@ -194,6 +191,7 @@ impl SnowballNode {
             "request" => {
                 if payload.seq_num > state.seq_num {
                     warn!("ATTENZIONE, CHIESTO STATO PER SEQ_NUM {} MA IO SONO A SEQ_NUM {}", payload.seq_num, state.seq_num);
+                    self.send_peer_notification(sender_id, "unavailable", payload.seq_num);
                     return false;
                 }
 
@@ -211,8 +209,14 @@ impl SnowballNode {
                     warn!("BERNARDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO RICEVUTO MESSAGGIO DI RESPONSE IN MOMENTO SCORRETTO: state={}", state);
                     return false;
                 }
-                // TODO: CONTROLLARE SE IL MESSAGGIO AVVIENE DA UN PROCESSO PER
-                // IL QUALE MI ASPETTAVO DI RICEVERLO
+                if !state.response_sample_ids.contains(sender_id) {
+                    warn!("BERNARDOOOOOOO NON ASPETTAVO MESSAGGIO DA NODO {:?}", sender_id);
+                    return false;
+                }
+                // il messaggio arriva da un nodo dal quale me lo aspettavo,
+                // lo tolgo dal set
+                state.response_sample_ids.remove(sender_id);
+
                 if payload.vote != 0 && payload.vote != 1 {
                     warn!("BERNARDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO RICEVUTO MESSAGGIO DI RESPONSE CON VALUE SBAGLIATO: phase={}, value={}", state.phase, payload.vote);
                     return false;
@@ -222,6 +226,33 @@ impl SnowballNode {
                     info!("Process {} received all the messages for this round: {:?}", state.order, state.response_buffer);
                     self.on_values_ready(state);
                 }
+            }
+            "unavailable" => {
+                info!("Got PeerMessage with message={}", message);
+                if state.phase != SnowballPhase::Listening {
+                    warn!("BERNARDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO RICEVUTO MESSAGGIO DI RESPONSE IN MOMENTO SCORRETTO: state={}", state);
+                    return false;
+                }
+                if !state.response_sample_ids.contains(sender_id) {
+                    warn!("BERNARDOOOOOOO NON ASPETTAVO MESSAGGIO DA NODO {:?}", sender_id);
+                    return false;
+                }
+                // il messaggio arriva da un nodo dal quale me lo aspettavo,
+                // lo tolgo dal set
+                state.response_sample_ids.remove(sender_id);
+
+                let mut peer_id = Vec::new();
+                let missing_responses_len = state.response_sample_ids.len();
+                while state.response_sample_ids.len() < missing_responses_len + 1 {
+                    let extra_node_set = self.select_node_sample(state, 1);
+                    for extra_node_index in extra_node_set {
+                        peer_id = state.member_ids[extra_node_index].clone();
+                        state.response_sample_ids.insert(peer_id.clone());
+                    }
+                }
+                
+                info!("Sending additional peer notifications to {:?}.", peer_id);
+                self.send_peer_notification(&peer_id, "request", state.seq_num);
             }
             _ => { }
         }
@@ -272,7 +303,8 @@ impl SnowballNode {
                     self.handle_decision(state)
                 }
                 else {
-                    self.prepare_and_forward_peer_requests(state);
+                    let sample = self.select_node_sample(state, state.k as usize);
+                    self.prepare_and_forward_peer_requests(sample, state);
                 }
             }
         }
@@ -298,7 +330,8 @@ impl SnowballNode {
         state.confidence_counter = 0;
         state.decision_array = [0, 0];
 
-        self.prepare_and_forward_peer_requests(state);
+        let sample = self.select_node_sample(state, state.k as usize);
+        self.prepare_and_forward_peer_requests(sample, state);
 
         state.switch_phase(SnowballPhase::Listening);
     }
@@ -331,11 +364,11 @@ impl SnowballNode {
 
     // ---------- Helper methods ----------
 
-    pub fn select_node_sample(&mut self, state: &mut SnowballState) -> HashSet<usize> {
+    pub fn select_node_sample(&mut self, state: &mut SnowballState, amount: usize) -> HashSet<usize> {
         let step = Uniform::new(0, state.member_ids.len());
-        let mut set = HashSet::<usize>::with_capacity(state.k as usize);
+        let mut set = HashSet::<usize>::with_capacity(amount);
 
-        while set.len() < state.k as usize {
+        while set.len() < amount as usize {
             let choices: Vec<_> = step.sample_iter(&mut self.rng).take(1).collect();
             for choice in choices {
                 if choice != state.order as usize {
