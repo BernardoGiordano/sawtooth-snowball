@@ -173,6 +173,28 @@ impl SnowballNode {
     pub fn on_peer_connected(&mut self, peer_id: PeerId, state: &mut SnowballState) -> bool {
         info!("Got PeerConnected: {:?}", hex::encode(&peer_id));
 
+        if state.member_ids.contains(&peer_id) {
+            return true;
+        }
+
+        // add new members to the member array
+        state.member_ids.insert(state.member_ids.len(), peer_id.clone());
+        // update my own order number
+        state.order = state.get_order_index(state.id.clone());
+        
+        true
+    }
+
+    pub fn on_peer_disconnected(&mut self, peer_id: PeerId, state: &mut SnowballState) -> bool {
+        info!("Got PeerDisconnected for peer ID: {:?}", peer_id);
+
+        // get index for the disconnected node
+        let index = state.get_order_index(peer_id);
+        // remove the disconnected node id
+        state.member_ids.remove(index as usize);
+        // update my own order number
+        state.order = state.get_order_index(state.id.clone());
+
         true
     }
 

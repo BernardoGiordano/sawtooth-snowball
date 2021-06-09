@@ -151,13 +151,11 @@ fn handle_update(
         }
         Ok(Update::PeerConnected(info)) => {
             node.on_peer_connected(info.peer_id, state);
-            // TODO: SE UN NODO SI CONNETTE, AGGIUNGERLO ALLA LISTA DEI NODI CONOSCIUTI
             return Ok(true);
         }
         Ok(Update::PeerDisconnected(id)) => {
-            info!("Received PeerDisconnected for peer ID: {:?}", id);
-            // TODO: SE UN NODO SI DISCONNETTE, RIMUOVERLO DALLA LISTA DEI NODI CONOSCIUTI
-            return Ok(false);
+            node.on_peer_disconnected(id, state);
+            return Ok(true);
         }
         Err(RecvTimeoutError::Timeout) => { return Ok(true); },
         Err(RecvTimeoutError::Disconnected) => {

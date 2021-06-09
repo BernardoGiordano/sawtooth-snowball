@@ -177,4 +177,8 @@ impl SnowballState {
         true
     }
 
+    pub fn get_order_index(&mut self, id: PeerId) -> u64 {
+        self.member_ids.clone().iter().position(|x| x == &id).unwrap() as u64
+    }
+
 }
