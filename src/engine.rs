@@ -77,6 +77,7 @@ impl Engine for SnowballEngine {
             match handle_update(&mut node, incoming_message, state) {
                 Ok(again) => {
                     if !again {
+                        info!("Final state is: {:?}", state);
                         break;
                     }
                 }
@@ -145,7 +146,7 @@ fn handle_update(
             return Ok(true);
         }
         Ok(Update::Shutdown) => {
-            info!("Received shutdown; stopping Snowball. Final state is: {:?}", state);
+            info!("Received shutdown; stopping Snowball.");
             return Ok(false);
         }
         Ok(Update::PeerConnected(info)) => {

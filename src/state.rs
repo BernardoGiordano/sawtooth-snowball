@@ -55,8 +55,9 @@ impl fmt::Display for SnowballState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "(process {}, {}, seq {}, chain head: {:?})",
-            self.order, self.phase, self.seq_num, self.chain_head
+            "(process {}, {}, seq {}, chain head: {:?}, waiting_set: {:?}, response_buffer:{:?})",
+            self.order, self.phase, self.seq_num, self.chain_head, self.waiting_response_set,
+            self.response_buffer
         )
     }
 }
@@ -98,7 +99,7 @@ pub struct SnowballState {
     pub decision_array: [u64; 2],
 
     // Set containing ids from peers we're waiting response
-    pub response_sample_ids: HashSet<PeerId>,
+    pub waiting_response_set: HashSet<PeerId>,
 
     /// The block ID of the node's current chain head
     pub chain_head: BlockId,
@@ -144,7 +145,7 @@ impl SnowballState {
             confidence_counter: 0,
             response_buffer: [0, 0],
             decision_array: [0, 0],
-            response_sample_ids: HashSet::new(),
+            waiting_response_set: HashSet::new(),
             chain_head: BlockId::new(),
             decision_block: BlockId::new(),
             phase: SnowballPhase::Idle,
