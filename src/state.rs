@@ -56,7 +56,7 @@ impl fmt::Display for SnowballState {
         write!(
             f,
             "(process {}, {}, seq {}, chain head: {:?}, waiting_set: {:?}, response_buffer:{:?})",
-            self.order, self.phase, self.seq_num, self.chain_head, self.waiting_response_set,
+            self.order, self.phase, self.seq_num, hex::encode(&self.chain_head), self.waiting_response_set,
             self.response_buffer
         )
     }

@@ -1,22 +1,30 @@
-use sawtooth_sdk::consensus::engine::{Block, BlockId, PeerId, PeerInfo};
-use sawtooth_sdk::consensus::service::Service;
+use sawtooth_sdk::consensus::{engine::*, service::Service};
 
 use crate::config::{SnowballConfig};
 use crate::state::{SnowballState, SnowballPhase, SnowballDecisionState};
 use crate::message::{SnowballMessage};
 
 use std::collections::HashSet;
+use std::thread::sleep;
+use std::time;
 
 use rand;
 use rand::distributions::{Distribution, Uniform};
 
 use safe_crypto::Nonce;
 
+#[derive(Default)]
+struct LogGuard {
+    not_ready_to_summarize: bool,
+    not_ready_to_finalize: bool,
+}
+
 /// Contains the core logic of the Snowball node
 pub struct SnowballNode {
     /// Used for interactions with the validator
-    pub service: Box<dyn Service>,
-    pub rng: rand::rngs::ThreadRng,
+    service: Box<dyn Service>,
+    rng: rand::rngs::ThreadRng,
+    log_guard: LogGuard
 }
 
 impl SnowballNode {
@@ -30,6 +38,7 @@ impl SnowballNode {
     ) -> Self {
         let mut n = SnowballNode {
             service: service,
+            log_guard: LogGuard::default(),
             rng: rand::thread_rng(),
         };
 
@@ -65,6 +74,41 @@ impl SnowballNode {
         };
     }
 
+    fn finalize_block(&mut self) -> BlockId {
+        debug!("Finalizing block");
+        let mut summary = self.service.summarize_block();
+        while let Err(Error::BlockNotReady) = summary {
+            if !self.log_guard.not_ready_to_summarize {
+                self.log_guard.not_ready_to_summarize = true;
+                debug!("Block not ready to summarize");
+            }
+            sleep(time::Duration::from_secs(1));
+            summary = self.service.summarize_block();
+        }
+        self.log_guard.not_ready_to_summarize = false;
+        let summary = summary.expect("Failed to summarize block");
+        debug!("Block has been summarized successfully");
+
+        let consensus: Vec<u8> = create_consensus(&summary);
+        let mut block_id = self.service.finalize_block(consensus.clone());
+        while let Err(Error::BlockNotReady) = block_id {
+            if !self.log_guard.not_ready_to_finalize {
+                self.log_guard.not_ready_to_finalize = true;
+                debug!("Block not ready to finalize");
+            }
+            sleep(time::Duration::from_secs(1));
+            block_id = self.service.finalize_block(consensus.clone());
+        }
+        self.log_guard.not_ready_to_finalize = false;
+        let block_id = block_id.expect("Failed to finalize block");
+        debug!(
+            "Block has been finalized successfully: {:?}",
+            hex::encode(&block_id)
+        );
+
+        block_id
+    }
+
     /// At a regular interval, try to finalize a block when the primary is ready
     pub fn try_publish(&mut self, state: &mut SnowballState) -> () {
         if state.phase != SnowballPhase::Idle {
@@ -76,18 +120,7 @@ impl SnowballNode {
             return;
         }
 
-        info!("{}: Attempting to summarize block", state);
-
-        let summary = self.service
-                .summarize_block()
-                .expect("Failed to summarize block");
-
-        match self.service.finalize_block(create_consensus(&summary)) {
-            Ok(block_id) => {
-                info!("{}: Publishing block {}", state, hex::encode(&block_id));
-            }
-            Err(err) => { error!("Could not finalize block: {}", err); }
-        }
+        self.finalize_block();
     }
 
     fn send_peer_notification(&mut self, peer_id: &PeerId, message: &str, seq_num: u64) {
@@ -95,7 +128,7 @@ impl SnowballNode {
     }
 
     fn send_peer_message(&mut self, peer_id: &PeerId, message: &str, v: u8, seq_num: u64) {
-        debug!("Sending {} message to {:?}", message, peer_id);
+        debug!("Sending {} message to {:?}", message, hex::encode(&peer_id));
         let nonce = Nonce::new().into_bytes();
         let mut payload = SnowballMessage::new();
         payload.vote = v;
@@ -186,7 +219,7 @@ impl SnowballNode {
     }
 
     pub fn on_peer_disconnected(&mut self, peer_id: PeerId, state: &mut SnowballState) -> bool {
-        info!("Got PeerDisconnected for peer ID: {:?}", peer_id);
+        info!("Got PeerDisconnected for peer ID: {:?}", hex::encode(&peer_id));
 
         // get index for the disconnected node
         let index = state.get_order_index(peer_id);
@@ -236,7 +269,7 @@ impl SnowballNode {
                 state.waiting_response_set.remove(sender_id);
 
                 if payload.vote != 0 && payload.vote != 1 {
-                    error!("Process {} received invalid vote ({}) from node {:?}", state.order, payload.vote, sender_id);
+                    error!("Process {} received invalid vote ({}) from node {:?}", state.order, payload.vote, hex::encode(&sender_id));
                     return false;
                 }
                 state.response_buffer[payload.vote as usize] += 1;
@@ -252,7 +285,7 @@ impl SnowballNode {
                 }
 
                 if !state.waiting_response_set.contains(sender_id) {
-                    warn!("Process {} received unwaited message from {:?}", state.order, sender_id);
+                    warn!("Process {} received unwaited message from {:?}", state.order, hex::encode(&sender_id));
                     return false;
                 }
 
@@ -272,7 +305,7 @@ impl SnowballNode {
                     }
                 }
                 
-                info!("Sending additional peer notifications to {:?}.", peer_id);
+                info!("Sending additional peer notifications to {:?}.", hex::encode(&peer_id));
                 self.send_peer_notification(&peer_id, "request", state.seq_num);
             }
             _ => { }
