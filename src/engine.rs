@@ -74,6 +74,8 @@ impl Engine for SnowballEngine {
             let incoming_message = updates.recv_timeout(time::Duration::from_millis(10));
             let state = &mut **snowball_state.write();
 
+            node.handle_queue(state);
+
             match handle_update(&mut node, incoming_message, state) {
                 Ok(again) => {
                     if !again {
@@ -86,8 +88,8 @@ impl Engine for SnowballEngine {
 
             block_publishing_ticker.tick(|| node.try_publish(state));
 
-            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(4) {
-                info!("My state: {}", state);
+            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(1) {
+                info!("State log: {}", state);
                 timestamp_log = time::Instant::now();
             }
         }

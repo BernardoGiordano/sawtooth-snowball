@@ -4,7 +4,7 @@ use crate::config::{SnowballConfig};
 use crate::state::{SnowballState, SnowballPhase, SnowballDecisionState};
 use crate::message::{SnowballMessage};
 
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::thread::sleep;
 use std::time;
 
@@ -24,7 +24,8 @@ pub struct SnowballNode {
     /// Used for interactions with the validator
     service: Box<dyn Service>,
     rng: rand::rngs::ThreadRng,
-    log_guard: LogGuard
+    log_guard: LogGuard,
+    block_queue: VecDeque<Block>
 }
 
 impl SnowballNode {
@@ -40,6 +41,7 @@ impl SnowballNode {
             service: service,
             log_guard: LogGuard::default(),
             rng: rand::thread_rng(),
+            block_queue: VecDeque::new()
         };
 
         state.chain_head = chain_head.block_id.clone();
@@ -143,17 +145,26 @@ impl SnowballNode {
 
     // ---------- Methods for handling Updates from the Validator ----------
 
-    pub fn on_block_new(&mut self, block: Block, state: &mut SnowballState) -> bool {
-        info!(
-            "{}: Got BlockNew: {} / {}",
-            state,
-            block.block_num,
-            hex::encode(&block.block_id)
-        );
-        trace!("Block details: {:?}", block);
+    pub fn handle_queue(&mut self, state: &mut SnowballState) {
+        let block: Block;
+        match self.block_queue.front() {
+            Some(x) => block = x.clone(),
+            None => return
+        }
+
+        if block.block_id.eq(&state.decision_block) {
+            return;
+        }
+
+        debug!("Current queued blocks for process {}: {}", state.order, self.block_queue.len());
 
         // Only future blocks should be considered since committed blocks are final
-        if block.block_num < state.seq_num {
+        
+        let chain_head_block = self.service
+            .get_chain_head()
+            .expect("Unable to get chain head.");
+
+        if block.block_num < chain_head_block.block_num {
             self.service
                 .fail_block(block.block_id.clone())
                 .unwrap_or_else(|err| error!("Couldn't fail block due to error: {:?}", err));
@@ -163,7 +174,7 @@ impl SnowballNode {
                 hex::encode(&block.block_id),
                 state.seq_num,
             );
-            return true;
+            return;
         }
 
         self.service
@@ -171,6 +182,18 @@ impl SnowballNode {
             .expect("Failed to check block");
 
         self.handle_block_new(block.block_id, state);
+    }
+
+    pub fn on_block_new(&mut self, block: Block, state: &mut SnowballState) -> bool {
+        info!(
+            "{}: Got BlockNew: {} / {}",
+            state,
+            block.block_num,
+            hex::encode(&block.block_id)
+        );
+        trace!("Block details: {:?}", block);
+
+        self.block_queue.push_back(block);
         
         true
     }
@@ -407,6 +430,8 @@ impl SnowballNode {
                 .fail_block(state.decision_block.clone())
                 .expect("Failed to fail block");
         }
+
+        self.block_queue.pop_front();
 
         // TODO: GENERALIZE: ONLY FIRST NODE CAN PROPOSE
         if state.order == 0 {
