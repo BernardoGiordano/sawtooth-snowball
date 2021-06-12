@@ -43,19 +43,19 @@ pub struct SnowballConfig {
 
     pub byzantine_enabled: bool,
 
-    pub byzantine_churn_idx: Vec<usize>,
+    pub byzantine_churn_idx: Vec<u64>,
 
-    pub byzantine_hang_idx: Vec<usize>,
+    pub byzantine_hang_idx: Vec<u64>,
 
     pub byzantine_sleep_delay_millis: u64,
 
-    pub byzantine_sleep_idx: Vec<usize>,
+    pub byzantine_sleep_idx: Vec<u64>,
 
-    pub byzantine_duplicate_idx: Vec<usize>,
+    pub byzantine_duplicate_idx: Vec<u64>,
 
-    pub byzantine_spurious_idx: Vec<usize>,
+    pub byzantine_spurious_idx: Vec<u64>,
 
-    pub byzantine_wrong_decision_idx: Vec<usize>,
+    pub byzantine_wrong_decision_idx: Vec<u64>,
 }
 
 impl SnowballConfig {

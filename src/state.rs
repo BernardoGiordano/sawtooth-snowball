@@ -68,19 +68,19 @@ impl fmt::Display for SnowballState {
 pub struct ByzantineParameters {
     pub enabled: bool,
 
-    pub churn_idx: HashSet<usize>,
+    pub churn_idx: HashSet<u64>,
 
-    pub hang_idx: HashSet<usize>,
+    pub hang_idx: HashSet<u64>,
 
     pub sleep_delay_millis: u64,
 
-    pub sleep_idx: HashSet<usize>,
+    pub sleep_idx: HashSet<u64>,
 
-    pub duplicate_idx: HashSet<usize>,
+    pub duplicate_idx: HashSet<u64>,
 
-    pub spurious_idx: HashSet<usize>,
+    pub spurious_idx: HashSet<u64>,
 
-    pub wrong_decision_idx: HashSet<usize>,
+    pub wrong_decision_idx: HashSet<u64>,
 }
 
 impl ByzantineParameters {

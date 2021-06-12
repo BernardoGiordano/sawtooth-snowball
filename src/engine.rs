@@ -65,14 +65,14 @@ impl Engine for SnowballEngine {
             &mut snowball_state.write(),
         );
 
-        // node.start_idle_timeout(&mut snowball_state.write());
-
         // TODO: debug, rimuovere poi
         let mut timestamp_log = time::Instant::now();
 
         loop {
             let incoming_message = updates.recv_timeout(time::Duration::from_millis(10));
             let state = &mut **snowball_state.write();
+
+            // TODO: handle byzantine churn
 
             node.handle_queue(state);
 

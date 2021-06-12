@@ -192,7 +192,7 @@ impl SnowballNode {
         debug!("Preparing new peer notifications.");
         state.response_buffer = [0, 0];
         for index in sample {
-            let peer_id = &state.member_ids[index];
+            let peer_id = state.member_ids.get(index).cloned().unwrap();
             self.send_peer_notification(&peer_id, "request", state.seq_num);
             state.add_to_waiting_set(peer_id.clone());
         }
@@ -385,9 +385,15 @@ impl SnowballNode {
     pub fn handle_block_new(&mut self, block_id: BlockId, state: &mut SnowballState) {
         state.decision_block = block_id;
         state.seq_num += 1;
-        
+
         // algorithm starts on block new message
         let mut my_decision = SnowballDecisionState::OK;
+
+        // Byzantine test code for wrong decisions
+        if state.byzantine_test.enabled && state.byzantine_test.wrong_decision_idx.contains(&state.order) {
+            debug!("Byzantine process {} setting wrong decision", state.order);
+            my_decision = SnowballDecisionState::KO;
+        }
 
         state.decision_map.insert(state.seq_num, my_decision.clone());
         state.last_color = my_decision.clone();
