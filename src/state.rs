@@ -1,10 +1,9 @@
 use std::fmt;
-use std::time::Duration;
-use std::collections::{HashMap, HashSet};
+use std::time::{Duration, Instant};
+use std::collections::{HashMap};
 
 use sawtooth_sdk::consensus::engine::{BlockId, PeerId};
 
-use crate::timing::Timeout;
 use crate::config::SnowballConfig;
 
 /// Phases of the Snowball algorithm
@@ -56,7 +55,7 @@ impl fmt::Display for SnowballState {
         write!(
             f,
             "(process {}, {}, seq {}, chain head: {:?}, waiting_set: {:?}, response_buffer:{:?})",
-            self.order, self.phase, self.seq_num, hex::encode(&self.chain_head), self.waiting_response_set,
+            self.order, self.phase, self.seq_num, hex::encode(&self.chain_head), self.waiting_response_map,
             self.response_buffer
         )
     }
@@ -99,7 +98,7 @@ pub struct SnowballState {
     pub decision_array: [u64; 2],
 
     // Set containing ids from peers we're waiting response
-    pub waiting_response_set: HashSet<PeerId>,
+    pub waiting_response_map: HashMap<PeerId, Duration>,
 
     /// The block ID of the node's current chain head
     pub chain_head: BlockId,
@@ -145,7 +144,7 @@ impl SnowballState {
             confidence_counter: 0,
             response_buffer: [0, 0],
             decision_array: [0, 0],
-            waiting_response_set: HashSet::new(),
+            waiting_response_map: HashMap::new(),
             chain_head: BlockId::new(),
             decision_block: BlockId::new(),
             phase: SnowballPhase::Idle,
@@ -179,6 +178,10 @@ impl SnowballState {
 
     pub fn get_order_index(&mut self, id: PeerId) -> u64 {
         self.member_ids.clone().iter().position(|x| x == &id).unwrap() as u64
+    }
+
+    pub fn add_to_waiting_set(&mut self, id: PeerId) {
+        self.waiting_response_map.insert(id, Instant::now().elapsed());
     }
 
 }

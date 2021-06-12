@@ -204,7 +204,7 @@ impl SnowballNode {
         for index in sample {
             let peer_id = &state.member_ids[index];
             self.send_peer_notification(&peer_id, "request", state.seq_num);
-            state.waiting_response_set.insert(peer_id.clone());
+            state.add_to_waiting_set(peer_id.clone());
         }
     }
 
@@ -282,14 +282,14 @@ impl SnowballNode {
                     warn!("Process {} received a response message when it was not listening. Current state: {}", state.order, state);
                     return false;
                 }
-                if !state.waiting_response_set.contains(sender_id) {
+                if !state.waiting_response_map.contains_key(sender_id) {
                     warn!("Process {} received unwaited message from {:?}", state.order, sender_id);
                     return false;
                 }
 
                 // a message arrived from a node I was waiting for a response, I
                 // remove it from the waiting response set
-                state.waiting_response_set.remove(sender_id);
+                state.waiting_response_map.remove(sender_id);
 
                 if payload.vote != 0 && payload.vote != 1 {
                     error!("Process {} received invalid vote ({}) from node {:?}", state.order, payload.vote, hex::encode(&sender_id));
@@ -307,24 +307,24 @@ impl SnowballNode {
                     return false;
                 }
 
-                if !state.waiting_response_set.contains(sender_id) {
+                if !state.waiting_response_map.contains_key(sender_id) {
                     warn!("Process {} received unwaited message from {:?}", state.order, hex::encode(&sender_id));
                     return false;
                 }
 
                 // a message arrived from a node I was waiting for a response, I
                 // remove it from the waiting response set
-                state.waiting_response_set.remove(sender_id);
+                state.waiting_response_map.remove(sender_id);
 
                 // I find another node to send a request to, which is not in my
                 // current waiting response set
                 let mut peer_id = Vec::new();
-                let missing_responses_len = state.waiting_response_set.len();
-                while state.waiting_response_set.len() < missing_responses_len + 1 {
+                let missing_responses_len = state.waiting_response_map.len();
+                while state.waiting_response_map.len() < missing_responses_len + 1 {
                     let extra_node_set = self.select_node_sample(state, 1);
                     for extra_node_index in extra_node_set {
                         peer_id = state.member_ids[extra_node_index].clone();
-                        state.waiting_response_set.insert(peer_id.clone());
+                        state.add_to_waiting_set(peer_id.clone());
                     }
                 }
                 
