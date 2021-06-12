@@ -38,11 +38,24 @@ pub struct SnowballConfig {
     /// The maximum time for retrying with exponential backoff
     pub exponential_retry_max: Duration,
 
-    /// Must be longer than block_publishing_delay
-    pub idle_timeout: Duration,
-
     /// Where to store SnowballState ("memory" or "disk+/path/to/file")
     pub storage_location: String,
+
+    pub byzantine_enabled: bool,
+
+    pub byzantine_churn_idx: Vec<usize>,
+
+    pub byzantine_hang_idx: Vec<usize>,
+
+    pub byzantine_sleep_delay_millis: u64,
+
+    pub byzantine_sleep_idx: Vec<usize>,
+
+    pub byzantine_duplicate_idx: Vec<usize>,
+
+    pub byzantine_spurious_idx: Vec<usize>,
+
+    pub byzantine_wrong_decision_idx: Vec<usize>,
 }
 
 impl SnowballConfig {
@@ -52,12 +65,19 @@ impl SnowballConfig {
             alfa: 0,
             beta: 0,
             k: 0,
-            block_publishing_delay: Duration::from_millis(10000),
+            block_publishing_delay: Duration::from_millis(5000),
             update_recv_timeout: Duration::from_millis(10),
             exponential_retry_base: Duration::from_millis(100),
             exponential_retry_max: Duration::from_millis(60000),
-            idle_timeout: Duration::from_millis(30000),
             storage_location: "memory".into(),
+            byzantine_enabled: false,
+            byzantine_churn_idx: Vec::new(),
+            byzantine_hang_idx: Vec::new(),
+            byzantine_sleep_delay_millis: 6000,
+            byzantine_sleep_idx: Vec::new(),
+            byzantine_duplicate_idx: Vec::new(),
+            byzantine_spurious_idx: Vec::new(),
+            byzantine_wrong_decision_idx: Vec::new(),
         }
     }
 
@@ -69,6 +89,7 @@ impl SnowballConfig {
     /// + `sawtooth.consensus.algorithm.beta` (required)
     /// + `sawtooth.consensus.algorithm.k` (required)
     /// + `sawtooth.consensus.algorithm.block_publishing_delay` (optional, default 10000 ms)
+    /// TODO: document byzantine params
     ///
     /// # Panics
     /// + If the `sawtooth.consensus.algorithm.members` setting is not provided or is invalid
@@ -90,6 +111,14 @@ impl SnowballConfig {
                         String::from("sawtooth.consensus.algorithm.alfa"),
                         String::from("sawtooth.consensus.algorithm.beta"),
                         String::from("sawtooth.consensus.algorithm.k"),
+                        String::from("sawtooth.byzantine.enabled"),
+                        String::from("sawtooth.byzantine.parameter.churn_idx"),
+                        String::from("sawtooth.byzantine.parameter.hang_idx"),
+                        String::from("sawtooth.byzantine.parameter.sleep_delay"),
+                        String::from("sawtooth.byzantine.parameter.sleep_idx"),
+                        String::from("sawtooth.byzantine.parameter.duplicate_idx"),
+                        String::from("sawtooth.byzantine.parameter.spurious_idx"),
+                        String::from("sawtooth.byzantine.parameter.wrong_decision_idx"),
                     ],
                 )
             },
@@ -124,11 +153,55 @@ impl SnowballConfig {
             "sawtooth.consensus.algorithm.block_publishing_delay",
         );
 
-        merge_millis_setting_if_set(
-            &settings,
-            &mut self.idle_timeout,
-            "sawtooth.consensus.algorithm.idle_timeout",
-        );
+        // Configure byzantine parameters
+        if let Some(setting) = settings.get("sawtooth.byzantine.enabled") {
+            if let Ok(setting_value) = setting.parse() {
+                self.byzantine_enabled = setting_value;
+            }
+        }
+
+        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.churn_idx") {
+            if let Ok(setting_value) = serde_json::from_str(setting) {
+                self.byzantine_churn_idx = setting_value;
+            }
+        }
+
+        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.hang_idx") {
+            if let Ok(setting_value) = serde_json::from_str(setting) {
+                self.byzantine_hang_idx = setting_value;
+            }
+        }
+
+        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.sleep_delay") {
+            if let Ok(setting_value) = setting.parse() {
+                self.byzantine_sleep_delay_millis = setting_value;
+            }
+        }
+
+        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.sleep_idx") {
+            if let Ok(setting_value) = serde_json::from_str(setting) {
+                self.byzantine_sleep_idx = setting_value;
+            }
+        }
+
+        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.duplicate_idx") {
+            if let Ok(setting_value) = serde_json::from_str(setting) {
+                self.byzantine_duplicate_idx = setting_value;
+            }
+        }
+
+        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.spurious_idx") {
+            if let Ok(setting_value) = serde_json::from_str(setting) {
+                self.byzantine_spurious_idx = setting_value;
+            }
+        }
+
+        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.wrong_decision_idx") {
+            if let Ok(setting_value) = serde_json::from_str(setting) {
+                self.byzantine_wrong_decision_idx = setting_value;
+            }
+        }
+
     }
 }
 

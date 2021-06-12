@@ -389,11 +389,6 @@ impl SnowballNode {
         // algorithm starts on block new message
         let mut my_decision = SnowballDecisionState::OK;
 
-        // TODO TEST RIMUOVERE
-        // if state.order == 1 {
-        //     my_decision = SnowballDecisionState::KO;
-        // }
-
         state.decision_map.insert(state.seq_num, my_decision.clone());
         state.last_color = my_decision.clone();
         state.confidence_counter = 0;
@@ -449,6 +444,14 @@ impl SnowballNode {
         }
         debug!("Set for node {:?}: {:?}", state.order, set);
         set
+    }
+
+    pub fn handle_unresponsive_peers(&mut self, state: &mut SnowballState) {
+        for (peer_id, timeout) in &state.waiting_response_map {
+            if timeout.clone().check_expired() {
+                warn!("Expired timeout without a response from {}", hex::encode(peer_id));
+            }
+        }
     }
 
 }

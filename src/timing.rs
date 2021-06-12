@@ -27,7 +27,7 @@ impl Ticker {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 enum TimeoutState {
     Active,
     Inactive,
@@ -36,7 +36,7 @@ enum TimeoutState {
 
 /// A timer that expires after a given duration
 /// Check back on this timer every so often to see if it's expired
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Timeout {
     state: TimeoutState,
     duration: Duration,

@@ -222,7 +222,15 @@ services:
           sawtooth.consensus.algorithm.alfa=3 \
           sawtooth.consensus.algorithm.beta=2 \
           sawtooth.consensus.algorithm.k=4 \
-          sawtooth.consensus.algorithm.block_publishing_delay=6000 \
+          sawtooth.consensus.algorithm.block_publishing_delay=5000 \
+          sawtooth.byzantine.enabled=false \
+          sawtooth.byzantine.parameter.churn_idx=\\[\\] \
+          sawtooth.byzantine.parameter.hang_idx=\\[\\] \
+          sawtooth.byzantine.parameter.sleep_delay=6000 \
+          sawtooth.byzantine.parameter.sleep_idx=\\[\\] \
+          sawtooth.byzantine.parameter.duplicate_idx=\\[\\] \
+          sawtooth.byzantine.parameter.spurious_idx=\\[\\] \
+          sawtooth.byzantine.parameter.wrong_decision_idx=\\[\\] \
           -o config.batch && \
         sawadm genesis \
           config-genesis.batch config.batch && \

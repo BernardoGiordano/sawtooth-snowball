@@ -1,6 +1,7 @@
 use std::fmt;
+use std::iter::FromIterator;
 use std::time::Duration;
-use std::collections::{HashMap};
+use std::collections::{HashMap, HashSet};
 
 use sawtooth_sdk::consensus::engine::{BlockId, PeerId};
 
@@ -55,12 +56,48 @@ impl fmt::Display for SnowballState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "(process {}, {}, seq {}, chain head: {:?}, waiting_set: {:?}, response_buffer:{:?})",
+            "(process {}, {}, seq {}, chain head: {:?}, waiting_set: {:?}, response_buffer: {:?}, byzantine: {:?})",
             self.order, self.phase, self.seq_num, hex::encode(&self.chain_head), self.waiting_response_map,
-            self.response_buffer
+            self.response_buffer, self.byzantine_test
         )
     }
 }
+
+/// Information about the Byzantine behaviour parameters for testing purposes
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ByzantineParameters {
+    pub enabled: bool,
+
+    pub churn_idx: HashSet<usize>,
+
+    pub hang_idx: HashSet<usize>,
+
+    pub sleep_delay_millis: u64,
+
+    pub sleep_idx: HashSet<usize>,
+
+    pub duplicate_idx: HashSet<usize>,
+
+    pub spurious_idx: HashSet<usize>,
+
+    pub wrong_decision_idx: HashSet<usize>,
+}
+
+impl ByzantineParameters {
+    pub fn new(config: &SnowballConfig) -> Self {
+        ByzantineParameters {
+            enabled: config.byzantine_enabled,
+            churn_idx: FromIterator::from_iter(config.byzantine_churn_idx.clone()),
+            hang_idx: FromIterator::from_iter(config.byzantine_hang_idx.clone()),
+            sleep_delay_millis: config.byzantine_sleep_delay_millis,
+            sleep_idx: FromIterator::from_iter(config.byzantine_sleep_idx.clone()),
+            duplicate_idx: FromIterator::from_iter(config.byzantine_duplicate_idx.clone()),
+            spurious_idx: FromIterator::from_iter(config.byzantine_spurious_idx.clone()),
+            wrong_decision_idx: FromIterator::from_iter(config.byzantine_wrong_decision_idx.clone()),
+        }
+    }
+}
+
 
 /// Information about the Snowball algorithm's state
 #[derive(Debug, Serialize, Deserialize)]
@@ -113,14 +150,14 @@ pub struct SnowballState {
     /// List of members in the Snowball network, including this node
     pub member_ids: Vec<PeerId>,
 
-    /// Timer used to make sure the primary publishes blocks in a timely manner
-    // pub idle_timeout: Timeout,
-
     /// The base time to use for retrying with exponential backoff
     pub exponential_retry_base: Duration,
 
     /// The maximum time for retrying with exponential backoff
     pub exponential_retry_max: Duration,
+
+    // Byzantine parameters for testing purposes
+    pub byzantine_test: ByzantineParameters
 }
 
 impl SnowballState {
@@ -150,9 +187,9 @@ impl SnowballState {
             decision_block: BlockId::new(),
             phase: SnowballPhase::Idle,
             member_ids: config.members.clone(),
-            // idle_timeout: Timeout::new(config.idle_timeout),
             exponential_retry_base: config.exponential_retry_base,
             exponential_retry_max: config.exponential_retry_max,
+            byzantine_test: ByzantineParameters::new(config)
         }
     }
 

@@ -86,6 +86,8 @@ impl Engine for SnowballEngine {
                 Err(err) => error!("{}", err),
             }
 
+            node.handle_unresponsive_peers(state);
+
             block_publishing_ticker.tick(|| node.try_publish(state));
 
             if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(1) {
