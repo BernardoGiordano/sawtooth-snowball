@@ -56,16 +56,6 @@ impl SnowballNode {
         n
     }
 
-    /// Check to see if the idle timeout has expired
-    // pub fn check_idle_timeout_expired(&mut self, state: &mut SnowballState) -> bool {
-    //     state.idle_timeout.check_expired()
-    // }
-
-    /// Start the idle timeout
-    // pub fn start_idle_timeout(&self, state: &mut SnowballState) {
-    //     state.idle_timeout.start();
-    // }
-
     pub fn cancel_block(&mut self) {
         debug!("Canceling block");
         match self.service.cancel_block() {
@@ -374,7 +364,7 @@ impl SnowballNode {
                     state.confidence_counter += 1
                 }
                 if state.confidence_counter >= state.beta {
-                    state.switch_phase(SnowballPhase::Finishing);
+                    state.switch_phase();
                     self.handle_decision(state)
                 }
                 else {
@@ -412,7 +402,7 @@ impl SnowballNode {
         let sample = self.select_node_sample(state, state.k as usize);
         self.prepare_and_forward_peer_requests(sample, state);
 
-        state.switch_phase(SnowballPhase::Listening);
+        state.switch_phase();
     }
 
     pub fn handle_decision(&mut self, state: &mut SnowballState) {
@@ -440,7 +430,7 @@ impl SnowballNode {
             });
         }
 
-        state.switch_phase(SnowballPhase::Idle);
+        state.switch_phase();
     }
 
     // ---------- Helper methods ----------

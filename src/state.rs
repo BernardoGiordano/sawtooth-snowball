@@ -1,9 +1,10 @@
 use std::fmt;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::collections::{HashMap};
 
 use sawtooth_sdk::consensus::engine::{BlockId, PeerId};
 
+use crate::timing::Timeout;
 use crate::config::SnowballConfig;
 
 /// Phases of the Snowball algorithm
@@ -98,7 +99,7 @@ pub struct SnowballState {
     pub decision_array: [u64; 2],
 
     // Set containing ids from peers we're waiting response
-    pub waiting_response_map: HashMap<PeerId, Duration>,
+    pub waiting_response_map: HashMap<PeerId, Timeout>,
 
     /// The block ID of the node's current chain head
     pub chain_head: BlockId,
@@ -157,23 +158,15 @@ impl SnowballState {
 
     /// Switch to the desired phase if it is the next phase of the algorithm; if it is not the next
     /// phase, return an error
-    pub fn switch_phase(&mut self, desired_phase: SnowballPhase) -> bool {
-        info!("Trying to switch phase {} to {}", self.phase, desired_phase);
-
+    pub fn switch_phase(&mut self) {
         let next_phase = match self.phase {
             SnowballPhase::Idle => SnowballPhase::Listening,
             SnowballPhase::Listening => SnowballPhase::Finishing,
             SnowballPhase::Finishing => SnowballPhase::Idle
         };
 
-        self.phase = if next_phase == desired_phase {
-            desired_phase 
-        } else {
-            error!("Node attempted to go to {} when in phase {}", desired_phase, self.phase);
-            next_phase 
-        };
-        
-        true
+        info!("Switching phase {} to {}", self.phase, next_phase);
+        self.phase = next_phase;
     }
 
     pub fn get_order_index(&mut self, id: PeerId) -> u64 {
@@ -181,7 +174,9 @@ impl SnowballState {
     }
 
     pub fn add_to_waiting_set(&mut self, id: PeerId) {
-        self.waiting_response_map.insert(id, Instant::now().elapsed());
+        let mut timeout = Timeout::new(Duration::from_millis(1000));
+        timeout.start();
+        self.waiting_response_map.insert(id, timeout);
     }
 
 }
