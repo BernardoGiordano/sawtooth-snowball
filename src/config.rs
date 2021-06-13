@@ -29,6 +29,9 @@ pub struct SnowballConfig {
     /// How long to wait in between trying to publish blocks
     pub block_publishing_delay: Duration,
 
+    /// How long to wait before deciding a process is hung
+    pub hang_timeout: Duration,
+
     /// How long to wait for an update to arrive from the validator
     pub update_recv_timeout: Duration,
 
@@ -44,6 +47,8 @@ pub struct SnowballConfig {
     pub byzantine_enabled: bool,
 
     pub byzantine_churn_idx: Vec<u64>,
+
+    pub byzantine_churn_timeout: Duration,
 
     pub byzantine_hang_idx: Vec<u64>,
 
@@ -66,11 +71,13 @@ impl SnowballConfig {
             beta: 0,
             k: 0,
             block_publishing_delay: Duration::from_millis(5000),
+            hang_timeout: Duration::from_millis(3000),
             update_recv_timeout: Duration::from_millis(10),
             exponential_retry_base: Duration::from_millis(100),
             exponential_retry_max: Duration::from_millis(60000),
             storage_location: "memory".into(),
             byzantine_enabled: false,
+            byzantine_churn_timeout: Duration::from_millis(20000),
             byzantine_churn_idx: Vec::new(),
             byzantine_hang_idx: Vec::new(),
             byzantine_sleep_delay_millis: 6000,
@@ -111,7 +118,9 @@ impl SnowballConfig {
                         String::from("sawtooth.consensus.algorithm.alfa"),
                         String::from("sawtooth.consensus.algorithm.beta"),
                         String::from("sawtooth.consensus.algorithm.k"),
+                        String::from("sawtooth.consensus.algorithm.hang_timeout"),
                         String::from("sawtooth.byzantine.enabled"),
+                        String::from("sawtooth.byzantine.parameter.churn_timeout"),
                         String::from("sawtooth.byzantine.parameter.churn_idx"),
                         String::from("sawtooth.byzantine.parameter.hang_idx"),
                         String::from("sawtooth.byzantine.parameter.sleep_delay"),
@@ -153,12 +162,24 @@ impl SnowballConfig {
             "sawtooth.consensus.algorithm.block_publishing_delay",
         );
 
+        merge_millis_setting_if_set(
+            &settings,
+            &mut self.hang_timeout,
+            "sawtooth.consensus.algorithm.hang_timeout",
+        );
+
         // Configure byzantine parameters
         if let Some(setting) = settings.get("sawtooth.byzantine.enabled") {
             if let Ok(setting_value) = setting.parse() {
                 self.byzantine_enabled = setting_value;
             }
         }
+
+        merge_millis_setting_if_set(
+            &settings,
+            &mut self.byzantine_churn_timeout,
+            "sawtooth.byzantine.parameter.churn_timeout",
+        );
 
         if let Some(setting) = settings.get("sawtooth.byzantine.parameter.churn_idx") {
             if let Ok(setting_value) = serde_json::from_str(setting) {

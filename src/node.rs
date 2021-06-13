@@ -115,12 +115,17 @@ impl SnowballNode {
         self.finalize_block();
     }
 
-    fn send_peer_notification(&mut self, peer_id: &PeerId, message: &str, seq_num: u64) {
-        self.send_peer_message(peer_id, message, 0, seq_num);
+    fn send_peer_notification(&mut self, peer_id: &PeerId, message: &str, seq_num: u64, state: &mut SnowballState) {
+        self.send_peer_message(peer_id, message, 0, seq_num, state);
     }
 
-    fn send_peer_message(&mut self, peer_id: &PeerId, message: &str, v: u8, seq_num: u64) {
-        debug!("Sending {} message to {:?}", message, hex::encode(&peer_id));
+    fn send_peer_message(&mut self, peer_id: &PeerId, message: &str, v: u8, seq_num: u64, state: &mut SnowballState) {
+        // Byzantine test code for hung processes
+        if state.byzantine_test.enabled && state.byzantine_test.hang_idx.contains(&state.order) {
+            debug!("Byzantine process {} is hung and doesn't send the {} message", state.order, message);
+            return;
+        }
+
         let nonce = Nonce::new().into_bytes();
         let mut payload = SnowballMessage::new();
         payload.vote = v;
@@ -128,9 +133,38 @@ impl SnowballNode {
         payload.seq_num = seq_num;
         payload.message_type = String::from(message);
 
-        self.service
-            .send_to(&peer_id, message, serde_json::to_string(&payload).unwrap().as_bytes().to_vec())
-            .expect("Failed to send message");
+        // Byzantine test code for wrong decisions
+        if state.byzantine_test.enabled && state.byzantine_test.wrong_decision_idx.contains(&state.order) {
+            payload.vote = 0;
+            debug!("Byzantine process {} setting wrong decision", state.order);
+        }
+
+        // Byzantine test code for spurious messages
+        if state.byzantine_test.enabled && state.byzantine_test.spurious_idx.contains(&state.order) {
+            payload.seq_num = self.random_value(std::usize::MAX) as u64;
+            debug!("Byzantine process {} setting spurious message (seq_num {})", state.order, payload.seq_num);
+        }
+
+        // Byzantine test code for simulating delays
+        if state.byzantine_test.enabled && state.byzantine_test.sleep_idx.contains(&state.order) {
+            sleep(time::Duration::from_millis(state.byzantine_test.sleep_delay_millis));
+            debug!("Byzantine process {} sleeping {} ms before sending a message", state.order, state.byzantine_test.sleep_delay_millis);
+        }
+
+        let mut reps = 1;
+
+        // Byzantine test code for simulating delays
+        if state.byzantine_test.enabled && state.byzantine_test.duplicate_idx.contains(&state.order) {
+            reps = 2;
+            debug!("Byzantine process {} will send this message {} times", state.order, reps);
+        }
+        
+        for _ in 0..reps {
+            debug!("Sending {} message to {:?}", message, hex::encode(&peer_id));
+            self.service
+                .send_to(&peer_id, message, serde_json::to_string(&payload).unwrap().as_bytes().to_vec())
+                .expect("Failed to send message");
+        }
     }
 
     // ---------- Methods for handling Updates from the Validator ----------
@@ -193,7 +227,7 @@ impl SnowballNode {
         state.response_buffer = [0, 0];
         for index in sample {
             let peer_id = state.member_ids.get(index).cloned().unwrap();
-            self.send_peer_notification(&peer_id, "request", state.seq_num);
+            self.send_peer_notification(&peer_id, "request", state.seq_num, state);
             state.add_to_waiting_set(peer_id.clone());
         }
     }
@@ -254,7 +288,7 @@ impl SnowballNode {
         match message {
             "request" => {
                 if payload.seq_num > state.seq_num {
-                    self.send_peer_notification(sender_id, "unavailable", payload.seq_num);
+                    self.send_peer_notification(sender_id, "unavailable", payload.seq_num, state);
                     return false;
                 }
 
@@ -265,7 +299,7 @@ impl SnowballNode {
                 }
 
                 let current_value: u8 = if *seq_value.unwrap() == SnowballDecisionState::OK { 1 } else { 0 };
-                self.send_peer_message(sender_id, "response", current_value, state.seq_num);
+                self.send_peer_message(sender_id, "response", current_value, state.seq_num, state);
             }
             "response" => {
                 if state.phase != SnowballPhase::Listening {
@@ -319,7 +353,7 @@ impl SnowballNode {
                 }
                 
                 info!("Sending additional peer notifications to {:?}.", hex::encode(&peer_id));
-                self.send_peer_notification(&peer_id, "request", state.seq_num);
+                self.send_peer_notification(&peer_id, "request", state.seq_num, state);
             }
             _ => { }
         }
@@ -389,12 +423,6 @@ impl SnowballNode {
         // algorithm starts on block new message
         let mut my_decision = SnowballDecisionState::OK;
 
-        // Byzantine test code for wrong decisions
-        if state.byzantine_test.enabled && state.byzantine_test.wrong_decision_idx.contains(&state.order) {
-            debug!("Byzantine process {} setting wrong decision", state.order);
-            my_decision = SnowballDecisionState::KO;
-        }
-
         state.decision_map.insert(state.seq_num, my_decision.clone());
         state.last_color = my_decision.clone();
         state.confidence_counter = 0;
@@ -436,16 +464,17 @@ impl SnowballNode {
 
     // ---------- Helper methods ----------
 
-    pub fn select_node_sample(&mut self, state: &mut SnowballState, amount: usize) -> HashSet<usize> {
-        let step = Uniform::new(0, state.member_ids.len());
-        let mut set = HashSet::<usize>::with_capacity(amount);
+    pub fn random_value(&mut self, range_max: usize) -> usize {
+        let step = Uniform::new(0, range_max);
+        step.sample(&mut self.rng)
+    }
 
+    pub fn select_node_sample(&mut self, state: &mut SnowballState, amount: usize) -> HashSet<usize> {
+        let mut set = HashSet::<usize>::with_capacity(amount);
         while set.len() < amount as usize {
-            let choices: Vec<_> = step.sample_iter(&mut self.rng).take(1).collect();
-            for choice in choices {
-                if choice != state.order as usize {
-                    set.insert(choice);
-                }
+            let choice = self.random_value(state.member_ids.len());
+            if choice != state.order as usize {
+                set.insert(choice);
             }
         }
         debug!("Set for node {:?}: {:?}", state.order, set);
@@ -453,10 +482,40 @@ impl SnowballNode {
     }
 
     pub fn handle_unresponsive_peers(&mut self, state: &mut SnowballState) {
+        if state.byzantine_test.enabled && state.byzantine_test.hang_idx.contains(&state.order) {
+            // Hung processes don't care about handling unresponsive peers, they
+            // crashed silently
+            return;
+        }
+
+        let mut expired = HashSet::new();
         for (peer_id, timeout) in &state.waiting_response_map {
             if timeout.clone().check_expired() {
                 warn!("Expired timeout without a response from {}", hex::encode(peer_id));
+                expired.insert(peer_id.clone());
             }
+        }
+
+        let mut amount_to_add = 0;
+        for peer_id in expired {
+            state.waiting_response_map.remove(&peer_id);
+            amount_to_add += 1;
+        }
+
+        // I find another node to send a request to, which is not in my
+        // current waiting response set
+        for _ in 0..amount_to_add {
+            let mut id = Vec::new();
+            let missing_responses_len = state.waiting_response_map.len();
+            while state.waiting_response_map.len() < missing_responses_len + 1 {
+                let extra_node_set = self.select_node_sample(state, 1);
+                for extra_node_index in extra_node_set {
+                    id = state.member_ids[extra_node_index].clone();
+                    state.add_to_waiting_set(id.clone());
+                }
+            }
+            info!("Sending additional peer notifications to {:?}.", hex::encode(&id));
+            self.send_peer_notification(&id, "request", state.seq_num, state);            
         }
     }
 

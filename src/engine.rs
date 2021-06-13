@@ -68,11 +68,19 @@ impl Engine for SnowballEngine {
         // TODO: debug, rimuovere poi
         let mut timestamp_log = time::Instant::now();
 
+        // Byzantine fault test code for nodes randomly disconnecting from the network
+        let mut byzantine_churn_timeout = timing::Timeout::new(self.config.byzantine_churn_timeout);
+        byzantine_churn_timeout.start();
+
         loop {
             let incoming_message = updates.recv_timeout(time::Duration::from_millis(10));
             let state = &mut **snowball_state.write();
 
-            // TODO: handle byzantine churn
+            // Simulate byzantine crash for testing purposes
+            if state.byzantine_test.enabled && byzantine_churn_timeout.check_expired() && state.byzantine_test.churn_idx.contains(&state.order) {
+                debug!("Byzantine process {} terminates unexpectedly", state.order);
+                break;
+            }
 
             node.handle_queue(state);
 

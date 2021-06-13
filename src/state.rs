@@ -68,6 +68,8 @@ impl fmt::Display for SnowballState {
 pub struct ByzantineParameters {
     pub enabled: bool,
 
+    pub churn_timeout: Duration,
+
     pub churn_idx: HashSet<u64>,
 
     pub hang_idx: HashSet<u64>,
@@ -87,6 +89,7 @@ impl ByzantineParameters {
     pub fn new(config: &SnowballConfig) -> Self {
         ByzantineParameters {
             enabled: config.byzantine_enabled,
+            churn_timeout: config.byzantine_churn_timeout,
             churn_idx: FromIterator::from_iter(config.byzantine_churn_idx.clone()),
             hang_idx: FromIterator::from_iter(config.byzantine_hang_idx.clone()),
             sleep_delay_millis: config.byzantine_sleep_delay_millis,
@@ -156,6 +159,9 @@ pub struct SnowballState {
     /// The maximum time for retrying with exponential backoff
     pub exponential_retry_max: Duration,
 
+    /// How long to wait before deciding a process is hung
+    pub hang_timeout: Duration,
+
     // Byzantine parameters for testing purposes
     pub byzantine_test: ByzantineParameters
 }
@@ -189,12 +195,11 @@ impl SnowballState {
             member_ids: config.members.clone(),
             exponential_retry_base: config.exponential_retry_base,
             exponential_retry_max: config.exponential_retry_max,
+            hang_timeout: config.hang_timeout,
             byzantine_test: ByzantineParameters::new(config)
         }
     }
 
-    /// Switch to the desired phase if it is the next phase of the algorithm; if it is not the next
-    /// phase, return an error
     pub fn switch_phase(&mut self) {
         let next_phase = match self.phase {
             SnowballPhase::Idle => SnowballPhase::Listening,
@@ -211,7 +216,7 @@ impl SnowballState {
     }
 
     pub fn add_to_waiting_set(&mut self, id: PeerId) {
-        let mut timeout = Timeout::new(Duration::from_millis(1000));
+        let mut timeout = Timeout::new(self.hang_timeout);
         timeout.start();
         self.waiting_response_map.insert(id, timeout);
     }
