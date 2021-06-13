@@ -52,7 +52,7 @@ pub struct SnowballConfig {
 
     pub byzantine_hang_idx: Vec<u64>,
 
-    pub byzantine_sleep_delay_millis: u64,
+    pub byzantine_max_sleep_delay_millis: u64,
 
     pub byzantine_sleep_idx: Vec<u64>,
 
@@ -80,7 +80,7 @@ impl SnowballConfig {
             byzantine_churn_timeout: Duration::from_millis(20000),
             byzantine_churn_idx: Vec::new(),
             byzantine_hang_idx: Vec::new(),
-            byzantine_sleep_delay_millis: 6000,
+            byzantine_max_sleep_delay_millis: 6000,
             byzantine_sleep_idx: Vec::new(),
             byzantine_duplicate_idx: Vec::new(),
             byzantine_spurious_idx: Vec::new(),
@@ -123,7 +123,7 @@ impl SnowballConfig {
                         String::from("sawtooth.byzantine.parameter.churn_timeout"),
                         String::from("sawtooth.byzantine.parameter.churn_idx"),
                         String::from("sawtooth.byzantine.parameter.hang_idx"),
-                        String::from("sawtooth.byzantine.parameter.sleep_delay"),
+                        String::from("sawtooth.byzantine.parameter.max_sleep_delay"),
                         String::from("sawtooth.byzantine.parameter.sleep_idx"),
                         String::from("sawtooth.byzantine.parameter.duplicate_idx"),
                         String::from("sawtooth.byzantine.parameter.spurious_idx"),
@@ -193,9 +193,9 @@ impl SnowballConfig {
             }
         }
 
-        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.sleep_delay") {
+        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.max_sleep_delay") {
             if let Ok(setting_value) = setting.parse() {
-                self.byzantine_sleep_delay_millis = setting_value;
+                self.byzantine_max_sleep_delay_millis = setting_value;
             }
         }
 

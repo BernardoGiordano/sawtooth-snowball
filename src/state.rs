@@ -74,7 +74,7 @@ pub struct ByzantineParameters {
 
     pub hang_idx: HashSet<u64>,
 
-    pub sleep_delay_millis: u64,
+    pub max_sleep_delay_millis: u64,
 
     pub sleep_idx: HashSet<u64>,
 
@@ -108,7 +108,7 @@ impl ByzantineParameters {
             churn_timeout: config.byzantine_churn_timeout,
             churn_idx: FromIterator::from_iter(config.byzantine_churn_idx.clone()),
             hang_idx: FromIterator::from_iter(config.byzantine_hang_idx.clone()),
-            sleep_delay_millis: config.byzantine_sleep_delay_millis,
+            max_sleep_delay_millis: config.byzantine_max_sleep_delay_millis,
             sleep_idx: FromIterator::from_iter(config.byzantine_sleep_idx.clone()),
             duplicate_idx: FromIterator::from_iter(config.byzantine_duplicate_idx.clone()),
             spurious_idx: FromIterator::from_iter(config.byzantine_spurious_idx.clone()),

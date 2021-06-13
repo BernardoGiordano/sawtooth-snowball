@@ -222,11 +222,13 @@ services:
           sawtooth.consensus.algorithm.alfa=3 \
           sawtooth.consensus.algorithm.beta=2 \
           sawtooth.consensus.algorithm.k=4 \
-          sawtooth.consensus.algorithm.block_publishing_delay=5000 \
+          sawtooth.consensus.algorithm.block_publishing_delay=700 \
+          sawtooth.consensus.algorithm.hang_timeout=3000 \
           sawtooth.byzantine.enabled=false \
           sawtooth.byzantine.parameter.churn_idx=\\[\\] \
+          sawtooth.byzantine.parameter.churn_timeout=20000 \
           sawtooth.byzantine.parameter.hang_idx=\\[\\] \
-          sawtooth.byzantine.parameter.sleep_delay=6000 \
+          sawtooth.byzantine.parameter.max_sleep_delay=6000 \
           sawtooth.byzantine.parameter.sleep_idx=\\[\\] \
           sawtooth.byzantine.parameter.duplicate_idx=\\[\\] \
           sawtooth.byzantine.parameter.spurious_idx=\\[\\] \
