@@ -1,6 +1,6 @@
 use std::fmt;
 use std::iter::FromIterator;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::collections::{HashMap, HashSet};
 
 use sawtooth_sdk::consensus::engine::{BlockId, PeerId};
@@ -85,6 +85,22 @@ pub struct ByzantineParameters {
     pub wrong_decision_idx: HashSet<u64>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Measurements {
+    pub convergenza: HashMap<BlockId, u128>,
+
+    pub n_messaggi_inviati: u64,
+}
+
+impl Measurements {
+    pub fn new() -> Self {
+        Measurements {
+            convergenza: HashMap::new(),
+            n_messaggi_inviati: 0
+        }
+    }
+}
+
 impl ByzantineParameters {
     pub fn new(config: &SnowballConfig) -> Self {
         ByzantineParameters {
@@ -163,7 +179,10 @@ pub struct SnowballState {
     pub hang_timeout: Duration,
 
     // Byzantine parameters for testing purposes
-    pub byzantine_test: ByzantineParameters
+    pub byzantine_test: ByzantineParameters,
+
+    // Measurements variable to keep track of execution info
+    pub measurements: Measurements,
 }
 
 impl SnowballState {
@@ -196,7 +215,8 @@ impl SnowballState {
             exponential_retry_base: config.exponential_retry_base,
             exponential_retry_max: config.exponential_retry_max,
             hang_timeout: config.hang_timeout,
-            byzantine_test: ByzantineParameters::new(config)
+            byzantine_test: ByzantineParameters::new(config),
+            measurements: Measurements::new(),
         }
     }
 
@@ -221,4 +241,19 @@ impl SnowballState {
         self.waiting_response_map.insert(id, timeout);
     }
 
+    pub fn set_message_sent(&mut self) {
+        self.measurements.n_messaggi_inviati += 1;
+    }
+
+    pub fn set_block_new_timestamp(&mut self, block_id: BlockId) {
+        let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        self.measurements.convergenza.insert(block_id, current_time);
+    }
+
+    pub fn set_block_commit_timestamp(&mut self, block_id: BlockId) {
+        let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let old_time = self.measurements.convergenza.get(&block_id).cloned().expect("Unable to find block_id in map!");
+        self.measurements.convergenza.insert(block_id.clone(), current_time - old_time);
+        info!("Elapsed {} ns for block {} and process {}", current_time - old_time, hex::encode(block_id), self.order);
+    }
 }

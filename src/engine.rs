@@ -98,7 +98,7 @@ impl Engine for SnowballEngine {
 
             block_publishing_ticker.tick(|| node.try_publish(state));
 
-            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_secs(1) {
+            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_millis(4500) {
                 info!("State log: {}", state);
                 timestamp_log = time::Instant::now();
             }

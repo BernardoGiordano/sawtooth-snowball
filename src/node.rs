@@ -164,6 +164,7 @@ impl SnowballNode {
             self.service
                 .send_to(&peer_id, message, serde_json::to_string(&payload).unwrap().as_bytes().to_vec())
                 .expect("Failed to send message");
+            state.set_message_sent();
         }
     }
 
@@ -217,7 +218,9 @@ impl SnowballNode {
         );
         trace!("Block details: {:?}", block);
 
-        self.block_queue.push_back(block);
+        self.block_queue.push_back(block.clone());
+
+        state.set_block_new_timestamp(block.block_id);
         
         true
     }
@@ -421,7 +424,7 @@ impl SnowballNode {
         state.seq_num += 1;
 
         // algorithm starts on block new message
-        let mut my_decision = SnowballDecisionState::OK;
+        let my_decision = SnowballDecisionState::OK;
 
         state.decision_map.insert(state.seq_num, my_decision.clone());
         state.last_color = my_decision.clone();
@@ -449,6 +452,8 @@ impl SnowballNode {
                 .fail_block(state.decision_block.clone())
                 .expect("Failed to fail block");
         }
+
+        state.set_block_commit_timestamp(state.decision_block.clone());
 
         self.block_queue.pop_front();
 
