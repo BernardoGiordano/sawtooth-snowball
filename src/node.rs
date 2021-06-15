@@ -147,7 +147,8 @@ impl SnowballNode {
 
         // Byzantine test code for simulating delays
         if state.byzantine_test.enabled && state.byzantine_test.sleep_idx.contains(&state.order) {
-            sleep(time::Duration::from_millis(state.byzantine_test.max_sleep_delay_millis));
+            let sleep_delay_millis = self.random_value(state.byzantine_test.max_sleep_delay_millis as usize) as u64;
+            sleep(time::Duration::from_millis(sleep_delay_millis));
             debug!("Byzantine process {} sleeping {} ms before sending a message", state.order, state.byzantine_test.max_sleep_delay_millis);
         }
 
