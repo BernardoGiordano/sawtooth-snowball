@@ -396,14 +396,14 @@ impl SnowballNode {
                 }
                 if col_i != state.last_color {
                     state.last_color = col_i;
-                    state.confidence_counter = 1
+                    state.confidence_counter = 1;
                 }
                 else {
-                    state.confidence_counter += 1
+                    state.confidence_counter += 1;
                 }
                 if state.confidence_counter >= state.beta {
                     state.switch_phase();
-                    self.handle_decision(state)
+                    self.handle_decision(state);
                 }
                 else {
                     let sample = self.select_node_sample(state, state.k as usize);
