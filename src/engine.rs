@@ -68,8 +68,11 @@ impl Engine for SnowballEngine {
         // TODO: debug, rimuovere poi
         let mut timestamp_log = Instant::now();
 
-        // Byzantine fault test code for nodes randomly disconnecting from the network
-        let mut byzantine_churn_timeout = timing::Timeout::new(Duration::from_millis(node.random_value(self.config.byzantine_max_churn_timeout_millis as usize) as u64));
+        // Byzantine fault test code for nodes randomly disconnecting from the
+        // network
+        let random_wait = node.random_value(self.config.byzantine_max_churn_timeout_millis as usize) as u64;
+        info!("Process {} with random_wait {}", snowball_state.write().order, random_wait);
+        let mut byzantine_churn_timeout = timing::Timeout::new(Duration::from_millis(random_wait as u64));
         byzantine_churn_timeout.start();
 
         loop {
@@ -103,6 +106,8 @@ impl Engine for SnowballEngine {
                 timestamp_log = Instant::now();
             }
         }
+
+        info!("Process exited out of loop");
 
         Ok(())
     }
