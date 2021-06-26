@@ -2,7 +2,7 @@ use sawtooth_sdk::consensus::{engine::*, service::Service};
 
 use crate::config::{SnowballConfig};
 use crate::state::{SnowballState, SnowballPhase, SnowballDecisionState};
-use crate::message::{SnowballMessage};
+use crate::message::{SnowballMessage, LogMessage};
 
 use std::collections::{HashSet, VecDeque};
 use std::thread::sleep;
@@ -12,6 +12,8 @@ use rand;
 use rand::distributions::{Distribution, Uniform};
 
 use safe_crypto::Nonce;
+
+use reqwest;
 
 #[derive(Default)]
 struct LogGuard {
@@ -454,7 +456,18 @@ impl SnowballNode {
                 .expect("Failed to fail block");
         }
 
-        state.set_block_commit_timestamp(state.decision_block.clone());
+        let elapsed = state.set_block_commit_timestamp(state.decision_block.clone());
+
+        let mut log_message = LogMessage::new();
+        log_message.block_id = hex::encode(state.decision_block.clone());
+        log_message.n_messages = state.measurements.n_messaggi_inviati;
+        log_message.elapsed_time = elapsed;
+        log_message.n_members = state.member_ids.len() as u64;
+        log_message.seq_num = state.seq_num;
+        let client = reqwest::Client::new();
+        client.post("http://log.collector:5000/collect")
+            .json(&serde_json::to_string(&log_message).unwrap())
+            .send();
 
         self.block_queue.pop_front();
 

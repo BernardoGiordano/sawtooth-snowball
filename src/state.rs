@@ -250,10 +250,11 @@ impl SnowballState {
         self.measurements.convergenza.insert(block_id, current_time);
     }
 
-    pub fn set_block_commit_timestamp(&mut self, block_id: BlockId) {
+    pub fn set_block_commit_timestamp(&mut self, block_id: BlockId) -> u128 {
         let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
         let old_time = self.measurements.convergenza.get(&block_id).cloned().expect("Unable to find block_id in map!");
         self.measurements.convergenza.insert(block_id.clone(), current_time - old_time);
         info!("Elapsed {} ns for block {} and process {}", current_time - old_time, hex::encode(block_id), self.order);
+        current_time - old_time
     }
 }
