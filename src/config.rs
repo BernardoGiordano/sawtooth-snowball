@@ -48,7 +48,7 @@ pub struct SnowballConfig {
 
     pub byzantine_churn_idx: Vec<u64>,
 
-    pub byzantine_churn_timeout: Duration,
+    pub byzantine_max_churn_timeout_millis: u64,
 
     pub byzantine_hang_idx: Vec<u64>,
 
@@ -77,7 +77,7 @@ impl SnowballConfig {
             exponential_retry_max: Duration::from_millis(60000),
             storage_location: "memory".into(),
             byzantine_enabled: false,
-            byzantine_churn_timeout: Duration::from_millis(20000),
+            byzantine_max_churn_timeout_millis: 20000,
             byzantine_churn_idx: Vec::new(),
             byzantine_hang_idx: Vec::new(),
             byzantine_max_sleep_delay_millis: 6000,
@@ -120,7 +120,7 @@ impl SnowballConfig {
                         String::from("sawtooth.consensus.algorithm.k"),
                         String::from("sawtooth.consensus.algorithm.hang_timeout"),
                         String::from("sawtooth.byzantine.enabled"),
-                        String::from("sawtooth.byzantine.parameter.churn_timeout"),
+                        String::from("sawtooth.byzantine.parameter.max_churn_timeout"),
                         String::from("sawtooth.byzantine.parameter.churn_idx"),
                         String::from("sawtooth.byzantine.parameter.hang_idx"),
                         String::from("sawtooth.byzantine.parameter.max_sleep_delay"),
@@ -175,11 +175,11 @@ impl SnowballConfig {
             }
         }
 
-        merge_millis_setting_if_set(
-            &settings,
-            &mut self.byzantine_churn_timeout,
-            "sawtooth.byzantine.parameter.churn_timeout",
-        );
+        if let Some(setting) = settings.get("sawtooth.byzantine.parameter.max_churn_timeout") {
+            if let Ok(setting_value) = setting.parse() {
+                self.byzantine_max_churn_timeout_millis = setting_value;
+            }
+        }
 
         if let Some(setting) = settings.get("sawtooth.byzantine.parameter.churn_idx") {
             if let Ok(setting_value) = serde_json::from_str(setting) {

@@ -95,7 +95,7 @@ services:
           sawtooth.consensus.algorithm.hang_timeout=11000 \
           sawtooth.byzantine.enabled=false \
           sawtooth.byzantine.parameter.churn_idx=\\[\\] \
-          sawtooth.byzantine.parameter.churn_timeout=20000 \
+          sawtooth.byzantine.parameter.max_churn_timeout=20000 \
           sawtooth.byzantine.parameter.hang_idx=\\[\\] \
           sawtooth.byzantine.parameter.max_sleep_delay=400 \
           sawtooth.byzantine.parameter.sleep_idx=\\[\\] \

@@ -1,18 +1,3 @@
-# Copyright 2017 Intel Corporation
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ------------------------------------------------------------------------------
-
 version: "2.1"
 
 volumes:
@@ -22,7 +7,6 @@ volumes:
   cargo-target:
 
 services:
-
   test-devmode-engine-liveness:
     build:
       context: ../
@@ -62,6 +46,7 @@ services:
       --urls http://rest-api-0:8008,http://rest-api-1:8008,http://rest-api-2:8008,http://rest-api-3:8008,http://rest-api-4:8008,http://rest-api-5:8008,http://rest-api-6:8008,http://rest-api-7:8008 \
       \""
     stop_signal: SIGKILL
+
 
   devmode-engine-0:
     build:
@@ -191,6 +176,7 @@ services:
     command: devmode-engine-rust --connect tcp://validator-7:5005 -vv
     stop_signal: SIGKILL
 
+
   validator-0:
     image: hyperledger/sawtooth-validator:droptarget-nightly
     volumes:
@@ -222,13 +208,13 @@ services:
           sawtooth.consensus.algorithm.alfa=3 \
           sawtooth.consensus.algorithm.beta=2 \
           sawtooth.consensus.algorithm.k=4 \
-          sawtooth.consensus.algorithm.block_publishing_delay=700 \
-          sawtooth.consensus.algorithm.hang_timeout=3000 \
+          sawtooth.consensus.algorithm.block_publishing_delay=10000 \
+          sawtooth.consensus.algorithm.hang_timeout=11000 \
           sawtooth.byzantine.enabled=false \
           sawtooth.byzantine.parameter.churn_idx=\\[\\] \
-          sawtooth.byzantine.parameter.churn_timeout=20000 \
+          sawtooth.byzantine.parameter.max_churn_timeout=20000 \
           sawtooth.byzantine.parameter.hang_idx=\\[\\] \
-          sawtooth.byzantine.parameter.max_sleep_delay=6000 \
+          sawtooth.byzantine.parameter.max_sleep_delay=400 \
           sawtooth.byzantine.parameter.sleep_idx=\\[\\] \
           sawtooth.byzantine.parameter.duplicate_idx=\\[\\] \
           sawtooth.byzantine.parameter.spurious_idx=\\[\\] \
@@ -246,8 +232,10 @@ services:
             --peering static \
             --scheduler parallel \
             --fork-cache-keep-time 0 \
+            --maximum-peer-connectivity 8 \
     \""
     stop_signal: SIGKILL
+
 
   validator-1:
     image: hyperledger/sawtooth-validator:droptarget-nightly
@@ -268,9 +256,10 @@ services:
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
             --peering static \
-            --peers tcp://validator-0:8800
+            --peers tcp://validator-0:8800 \
             --scheduler parallel \
             --fork-cache-keep-time 0 \
+            --maximum-peer-connectivity 8 \
     \""
     stop_signal: SIGKILL
 
@@ -293,9 +282,10 @@ services:
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
             --peering static \
-            --peers tcp://validator-0:8800,tcp://validator-1:8800
+            --peers tcp://validator-0:8800,tcp://validator-1:8800 \
             --scheduler parallel \
             --fork-cache-keep-time 0 \
+            --maximum-peer-connectivity 8 \
     \""
     stop_signal: SIGKILL
 
@@ -318,12 +308,13 @@ services:
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
             --peering static \
-            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800
+            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800 \
             --scheduler parallel \
             --fork-cache-keep-time 0 \
+            --maximum-peer-connectivity 8 \
     \""
     stop_signal: SIGKILL
-  
+
   validator-4:
     image: hyperledger/sawtooth-validator:droptarget-nightly
     volumes:
@@ -343,9 +334,10 @@ services:
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
             --peering static \
-            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800
+            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800 \
             --scheduler parallel \
             --fork-cache-keep-time 0 \
+            --maximum-peer-connectivity 8 \
     \""
     stop_signal: SIGKILL
 
@@ -368,9 +360,10 @@ services:
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
             --peering static \
-            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800,tcp://validator-4:8800
+            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800,tcp://validator-4:8800 \
             --scheduler parallel \
             --fork-cache-keep-time 0 \
+            --maximum-peer-connectivity 8 \
     \""
     stop_signal: SIGKILL
 
@@ -393,9 +386,10 @@ services:
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
             --peering static \
-            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800,tcp://validator-4:8800,tcp://validator-5:8800
+            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800,tcp://validator-4:8800,tcp://validator-5:8800 \
             --scheduler parallel \
             --fork-cache-keep-time 0 \
+            --maximum-peer-connectivity 8 \
     \""
     stop_signal: SIGKILL
 
@@ -418,11 +412,14 @@ services:
             --bind network:tcp://eth0:8800 \
             --bind consensus:tcp://eth0:5005 \
             --peering static \
-            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800,tcp://validator-4:8800,tcp://validator-5:8800,tcp://validator-6:8800
+            --peers tcp://validator-0:8800,tcp://validator-1:8800,tcp://validator-2:8800,tcp://validator-3:8800,tcp://validator-4:8800,tcp://validator-5:8800,tcp://validator-6:8800 \
             --scheduler parallel \
             --fork-cache-keep-time 0 \
+            --maximum-peer-connectivity 8 \
     \""
     stop_signal: SIGKILL
+
+
 
   rest-api-0:
     image: hyperledger/sawtooth-rest-api:nightly
@@ -488,6 +485,8 @@ services:
     command: sawtooth-rest-api --connect tcp://validator-7:4004 --bind rest-api-7:8008
     stop_signal: SIGKILL
 
+
+
   intkey-tp-0:
     image: hyperledger/sawtooth-intkey-tp-python:nightly
     expose:
@@ -543,6 +542,8 @@ services:
       - 4004
     command: intkey-tp-python -C tcp://validator-7:4004
     stop_signal: SIGKILL
+
+
 
   settings-tp-0:
     image: hyperledger/sawtooth-settings-tp:nightly

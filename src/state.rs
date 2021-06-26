@@ -68,7 +68,7 @@ impl fmt::Display for SnowballState {
 pub struct ByzantineParameters {
     pub enabled: bool,
 
-    pub churn_timeout: Duration,
+    pub max_churn_timeout_millis: u64,
 
     pub churn_idx: HashSet<u64>,
 
@@ -105,7 +105,7 @@ impl ByzantineParameters {
     pub fn new(config: &SnowballConfig) -> Self {
         ByzantineParameters {
             enabled: config.byzantine_enabled,
-            churn_timeout: config.byzantine_churn_timeout,
+            max_churn_timeout_millis: config.byzantine_max_churn_timeout_millis,
             churn_idx: FromIterator::from_iter(config.byzantine_churn_idx.clone()),
             hang_idx: FromIterator::from_iter(config.byzantine_hang_idx.clone()),
             max_sleep_delay_millis: config.byzantine_max_sleep_delay_millis,

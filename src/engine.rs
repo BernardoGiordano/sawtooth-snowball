@@ -1,6 +1,6 @@
 use std::fmt::{self, Write};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
-use std::time;
+use std::time::{Duration, Instant};
 use std::str;
 
 use crate::timing;
@@ -66,19 +66,19 @@ impl Engine for SnowballEngine {
         );
 
         // TODO: debug, rimuovere poi
-        let mut timestamp_log = time::Instant::now();
+        let mut timestamp_log = Instant::now();
 
         // Byzantine fault test code for nodes randomly disconnecting from the network
-        let mut byzantine_churn_timeout = timing::Timeout::new(self.config.byzantine_churn_timeout);
+        let mut byzantine_churn_timeout = timing::Timeout::new(Duration::from_millis(node.random_value(self.config.byzantine_max_churn_timeout_millis as usize) as u64));
         byzantine_churn_timeout.start();
 
         loop {
-            let incoming_message = updates.recv_timeout(time::Duration::from_millis(10));
+            let incoming_message = updates.recv_timeout(Duration::from_millis(10));
             let state = &mut **snowball_state.write();
 
             // Simulate byzantine crash for testing purposes
             if state.byzantine_test.enabled && byzantine_churn_timeout.check_expired() && state.byzantine_test.churn_idx.contains(&state.order) {
-                debug!("Byzantine process {} terminates unexpectedly", state.order);
+                debug!("Byzantine process {} terminates unexpectedly after {:?}", state.order, byzantine_churn_timeout);
                 break;
             }
 
@@ -98,9 +98,9 @@ impl Engine for SnowballEngine {
 
             block_publishing_ticker.tick(|| node.try_publish(state));
 
-            if time::Instant::now().duration_since(timestamp_log) > time::Duration::from_millis(4500) {
+            if Instant::now().duration_since(timestamp_log) > Duration::from_millis(4500) {
                 info!("State log: {}", state);
-                timestamp_log = time::Instant::now();
+                timestamp_log = Instant::now();
             }
         }
 
