@@ -67,7 +67,7 @@ def main():
     ]
 
     compose_up = compose + [
-        'up', '--abort-on-container-exit'
+        'up' #, '--abort-on-container-exit'
     ]
 
     compose_down = compose + ['down', '--remove-orphans', '--volumes']

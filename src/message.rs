@@ -1,4 +1,6 @@
 use std::fmt;
+use crate::state::{ByzantineParameters};
+use crate::config::{SnowballConfig};
 
 #[derive(Serialize, Deserialize)]
 pub struct SnowballMessage {
@@ -17,11 +19,16 @@ pub struct LogMessage {
     pub block_id: String,
     pub alfa: u64,
     pub beta: u64,
-    pub k: u64
+    pub k: u64,
+    pub order: u64,
+    pub decision: u8,
+    pub hang_timeout: u64,
+    pub byzantine: ByzantineParameters
 }
 
 impl LogMessage {
     pub fn new() -> LogMessage {
+        let config = SnowballConfig::default();
         LogMessage {
             seq_num: 0,
             n_messages: 0,
@@ -30,7 +37,11 @@ impl LogMessage {
             block_id: String::new(),
             alfa: 0,
             beta: 0,
-            k: 0
+            k: 0,
+            order: 0,
+            decision: 0,
+            hang_timeout: 0,
+            byzantine: ByzantineParameters::new(&config)
         }
     }
 }

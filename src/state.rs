@@ -64,7 +64,7 @@ impl fmt::Display for SnowballState {
 }
 
 /// Information about the Byzantine behaviour parameters for testing purposes
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ByzantineParameters {
     pub enabled: bool,
 

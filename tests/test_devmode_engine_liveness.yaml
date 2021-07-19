@@ -206,19 +206,19 @@ services:
           sawtooth.consensus.algorithm.version=0.1 \
           sawtooth.consensus.algorithm.members=\\['\\\"'$$(cat /etc/sawtooth/keys/validator.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-1.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-2.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-3.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-4.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-5.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-6.pub)'\\\"','\\\"'$$(cat /etc/sawtooth/keys/validator-7.pub)'\\\"'\\] \
           sawtooth.consensus.algorithm.alfa=3 \
-          sawtooth.consensus.algorithm.beta=2 \
+          sawtooth.consensus.algorithm.beta=7 \
           sawtooth.consensus.algorithm.k=4 \
-          sawtooth.consensus.algorithm.block_publishing_delay=10000 \
-          sawtooth.consensus.algorithm.hang_timeout=11000 \
-          sawtooth.byzantine.enabled=false \
+          sawtooth.consensus.algorithm.block_publishing_delay=40000 \
+          sawtooth.consensus.algorithm.hang_timeout=5000 \
+          sawtooth.byzantine.enabled=true \
           sawtooth.byzantine.parameter.churn_idx=\\[\\] \
-          sawtooth.byzantine.parameter.max_churn_timeout=20000 \
+          sawtooth.byzantine.parameter.max_churn_timeout=50000 \
           sawtooth.byzantine.parameter.hang_idx=\\[\\] \
           sawtooth.byzantine.parameter.max_sleep_delay=400 \
           sawtooth.byzantine.parameter.sleep_idx=\\[\\] \
           sawtooth.byzantine.parameter.duplicate_idx=\\[\\] \
           sawtooth.byzantine.parameter.spurious_idx=\\[\\] \
-          sawtooth.byzantine.parameter.wrong_decision_idx=\\[\\] \
+          sawtooth.byzantine.parameter.wrong_decision_idx=\\[1,2,3\\] \
           -o config.batch && \
         sawadm genesis \
           config-genesis.batch config.batch && \

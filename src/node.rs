@@ -151,7 +151,7 @@ impl SnowballNode {
         if state.byzantine_test.enabled && state.byzantine_test.sleep_idx.contains(&state.order) {
             let sleep_delay_millis = self.random_value(state.byzantine_test.max_sleep_delay_millis as usize) as u64;
             sleep(time::Duration::from_millis(sleep_delay_millis));
-            debug!("Byzantine process {} sleeping {} ms before sending a message", state.order, state.byzantine_test.max_sleep_delay_millis);
+            debug!("Byzantine process {} sleeping {} ms before sending a message", state.order, sleep_delay_millis);
         }
 
         let mut reps = 1;
@@ -441,16 +441,19 @@ impl SnowballNode {
     }
 
     pub fn handle_decision(&mut self, state: &mut SnowballState) {
+        let mut decision_u8 = 0;
         let decision = state.decision_map.get(&state.seq_num).unwrap();
         info!("Process {} deciding {} for block seq {}", state.order, decision, state.seq_num);
         
         if *decision == SnowballDecisionState::OK {
+            decision_u8 = 1;
             self.service
                 .commit_block(state.decision_block.clone())
                 .expect("Failed to commit block");
             state.chain_head = state.decision_block.clone();
         }
         else {
+            decision_u8 = 0;
             self.service
                 .fail_block(state.decision_block.clone())
                 .expect("Failed to fail block");
@@ -464,6 +467,13 @@ impl SnowballNode {
         log_message.elapsed_time = elapsed;
         log_message.n_members = state.member_ids.len() as u64;
         log_message.seq_num = state.seq_num;
+        log_message.alfa = state.alfa;
+        log_message.beta = state.beta;
+        log_message.k = state.k;
+        log_message.order = state.order;
+        log_message.byzantine = state.byzantine_test.clone();
+        log_message.decision = decision_u8;
+        log_message.hang_timeout = state.hang_timeout.as_millis() as u64;
         let client = reqwest::Client::new();
         client.post("http://log.collector:5000/collect")
             .json(&serde_json::to_string(&log_message).unwrap())

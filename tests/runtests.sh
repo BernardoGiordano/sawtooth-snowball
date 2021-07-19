@@ -1,0 +1,10 @@
+python3 generate.py 10 && ../bin/run_docker_test test_devmode_engine_liveness.yaml
+python3 generate.py 11 && ../bin/run_docker_test test_devmode_engine_liveness.yaml
+python3 generate.py 12 && ../bin/run_docker_test test_devmode_engine_liveness.yaml
+python3 generate.py 13 && ../bin/run_docker_test test_devmode_engine_liveness.yaml
+python3 generate.py 14 && ../bin/run_docker_test test_devmode_engine_liveness.yaml
+python3 generate.py 15 && ../bin/run_docker_test test_devmode_engine_liveness.yaml
+python3 generate.py 16 && ../bin/run_docker_test test_devmode_engine_liveness.yaml
+python3 generate.py 17 && ../bin/run_docker_test test_devmode_engine_liveness.yaml
+python3 generate.py 18 && ../bin/run_docker_test test_devmode_engine_liveness.yaml
+python3 generate.py 19 && ../bin/run_docker_test test_devmode_engine_liveness.yaml

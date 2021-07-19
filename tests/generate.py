@@ -1,7 +1,8 @@
 import jinja2
+import sys
 
-N = 8
-
+N = int(sys.argv[1])
+print("N",N)
 with open("snowball.jinja.yaml") as f:
     template = f.read()
 
